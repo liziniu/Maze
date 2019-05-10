@@ -1,0 +1,503 @@
+Logging to logs/2019-05-10-14-43-42-707287
+cmd args:{'env': 'maze-sample-5x5-v0', 'env_type': 'maze', 'seed': None, 'alg': 'her2', 'num_timesteps': 1000000.0, 'network': None, 'gamestate': None, 'num_env': 1, 'reward_scale': 1.0, 'save_path': None, 'save_video_interval': 0, 'save_video_length': 200, 'play': False, 'store_data': False, 'aux_task': None, 'gpu': '12,13,2', 'mode': 1}
+Running Acer with following kwargs
+{'network_kwargs': {}, 'save_interval': 0, 'buffer2': True, 'her': 0.0, 'nb_train_epoch': 4, 'goal_shape': (2,), 'simple_store': True, 'save_model': False, 'eval_interval': 300, 'env_eval': <baselines.common.vec_env.dummy_vec_env.DummyVecEnv object at 0x1c2eeb27f0>, 'replay_k': 4, 'delta': 1, 'alpha': 0.99, 'trust_region': True, 'c': 10.0, 'replay_start': 10000, 'replay_ratio': 4, 'buffer_size': 50000, 'log_interval': 1000, 'gamma': 0.99, 'rprop_alpha': 0.99, 'rprop_epsilon': 1e-05, 'lrschedule': 'linear', 'lr': 0.0007, 'max_grad_norm': 10, 'ent_coef': 0.01, 'q_coef': 0.5, 'total_timesteps': 1000000, 'nsteps': 20, 'seed': None, 'env': <baselines.common.vec_env.dummy_vec_env.DummyVecEnv object at 0x1c2eeb2668>, 'network': 'mlp'}
+
+
+concat obs and goals on inputs
+concat obs and goals on inputs
+========================== her =============================
+<tf.Variable 'her/pi/mlp_fc0/w:0' shape=(4, 64) dtype=float32_ref>
+<tf.Variable 'her/pi/mlp_fc0/b:0' shape=(64,) dtype=float32_ref>
+<tf.Variable 'her/pi/mlp_fc1/w:0' shape=(64, 64) dtype=float32_ref>
+<tf.Variable 'her/pi/mlp_fc1/b:0' shape=(64,) dtype=float32_ref>
+<tf.Variable 'her/pi/w:0' shape=(64, 4) dtype=float32_ref>
+<tf.Variable 'her/pi/b:0' shape=(4,) dtype=float32_ref>
+<tf.Variable 'her/q/w:0' shape=(64, 4) dtype=float32_ref>
+<tf.Variable 'her/q/b:0' shape=(4,) dtype=float32_ref>
+========================== her =============================
+
+concat obs and goals on inputs
+--------------------------------------------------
+--------------- desired_pos: [4 4] ---------------
+--------------------------------------------------
+-------------------------------------
+| episode_length         | 0        |
+| episode_return         | 0        |
+| fps                    | 0        |
+| her_entropy            | 1.39     |
+| her_explained_variance | 0.249    |
+| her_loss               | -1.38    |
+| her_loss_bc            | -0       |
+| her_loss_f             | -2.13    |
+| her_loss_policy        | -2.13    |
+| her_loss_q             | 1.52     |
+| her_norm_grads         | 3.54     |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 0        |
+-------------------------------------
+-------------------------------------
+| episode_length         | 367      |
+| episode_return         | -0.462   |
+| fps                    | 1943     |
+| her_entropy            | 1.33     |
+| her_explained_variance | 0.0754   |
+| her_loss               | 0.0561   |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.067    |
+| her_loss_policy        | 0.067    |
+| her_loss_q             | 0.0049   |
+| her_norm_grads         | 0.208    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 20000    |
+-------------------------------------
+-------------------------------------
+| episode_length         | 925      |
+| episode_return         | -3       |
+| fps                    | 2026     |
+| her_entropy            | 1.36     |
+| her_explained_variance | -1.16    |
+| her_loss               | -0.0663  |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.055   |
+| her_loss_policy        | -0.055   |
+| her_loss_q             | 0.00473  |
+| her_norm_grads         | 0.115    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 40000    |
+-------------------------------------
+-------------------------------------
+| episode_length         | 897      |
+| episode_return         | -2.69    |
+| fps                    | 2051     |
+| her_entropy            | 1.37     |
+| her_explained_variance | -0.806   |
+| her_loss               | -0.00796 |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.00563  |
+| her_loss_policy        | 0.00563  |
+| her_loss_q             | 0.000195 |
+| her_norm_grads         | 0.0208   |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 60000    |
+-------------------------------------
+-------------------------------------
+| episode_length         | 604      |
+| episode_return         | -1.51    |
+| fps                    | 2056     |
+| her_entropy            | 1.21     |
+| her_explained_variance | -0.31    |
+| her_loss               | -0.14    |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.132   |
+| her_loss_policy        | -0.132   |
+| her_loss_q             | 0.00884  |
+| her_norm_grads         | 0.278    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 80000    |
+-------------------------------------
+-------------------------------------
+| episode_length         | 209      |
+| episode_return         | 0.166    |
+| fps                    | 2045     |
+| her_entropy            | 1.35     |
+| her_explained_variance | -0.759   |
+| her_loss               | -0.109   |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.0972  |
+| her_loss_policy        | -0.0972  |
+| her_loss_q             | 0.00407  |
+| her_norm_grads         | 0.154    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 100000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 379      |
+| episode_return         | -0.512   |
+| fps                    | 2010     |
+| her_entropy            | 1.37     |
+| her_explained_variance | -0.973   |
+| her_loss               | 0.000309 |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.0117   |
+| her_loss_policy        | 0.0117   |
+| her_loss_q             | 0.00453  |
+| her_norm_grads         | 0.0883   |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 120000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 392      |
+| episode_return         | -0.563   |
+| fps                    | 2004     |
+| her_entropy            | 1.35     |
+| her_explained_variance | 0.18     |
+| her_loss               | 0.0497   |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.0621   |
+| her_loss_policy        | 0.0621   |
+| her_loss_q             | 0.00205  |
+| her_norm_grads         | 0.135    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 140000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 603      |
+| episode_return         | -1.41    |
+| fps                    | 1987     |
+| her_entropy            | 1.35     |
+| her_explained_variance | -1.3     |
+| her_loss               | 0.00268  |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.0158   |
+| her_loss_policy        | 0.0158   |
+| her_loss_q             | 0.000828 |
+| her_norm_grads         | 0.0382   |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 160000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 275      |
+| episode_return         | -0.0944  |
+| fps                    | 1977     |
+| her_entropy            | 1.37     |
+| her_explained_variance | -0.954   |
+| her_loss               | -0.0909  |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.0785  |
+| her_loss_policy        | -0.0785  |
+| her_loss_q             | 0.00263  |
+| her_norm_grads         | 0.13     |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 180000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 560      |
+| episode_return         | -1.24    |
+| fps                    | 1971     |
+| her_entropy            | 1.36     |
+| her_explained_variance | -0.393   |
+| her_loss               | -0.0113  |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.00225  |
+| her_loss_policy        | 0.00225  |
+| her_loss_q             | 5.94e-05 |
+| her_norm_grads         | 0.0206   |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 200000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 391      |
+| episode_return         | -0.561   |
+| fps                    | 1966     |
+| her_entropy            | 1.37     |
+| her_explained_variance | -0.0921  |
+| her_loss               | 0.0187   |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.0313   |
+| her_loss_policy        | 0.0313   |
+| her_loss_q             | 0.00205  |
+| her_norm_grads         | 0.0708   |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 220000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 300      |
+| episode_return         | -0.198   |
+| fps                    | 1975     |
+| her_entropy            | 1.32     |
+| her_explained_variance | -1.58    |
+| her_loss               | -0.0174  |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.00606 |
+| her_loss_policy        | -0.00606 |
+| her_loss_q             | 0.00362  |
+| her_norm_grads         | 0.109    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 240000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 202      |
+| episode_return         | 0.194    |
+| fps                    | 1977     |
+| her_entropy            | 1.3      |
+| her_explained_variance | 0.0502   |
+| her_loss               | 0.00698  |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.0197   |
+| her_loss_policy        | 0.0197   |
+| her_loss_q             | 0.000413 |
+| her_norm_grads         | 0.0607   |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 260000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 456      |
+| episode_return         | -0.818   |
+| fps                    | 1978     |
+| her_entropy            | 1.35     |
+| her_explained_variance | -0.424   |
+| her_loss               | 0.03     |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.0427   |
+| her_loss_policy        | 0.0427   |
+| her_loss_q             | 0.00159  |
+| her_norm_grads         | 0.106    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 280000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 654      |
+| episode_return         | -1.71    |
+| fps                    | 1981     |
+| her_entropy            | 1.35     |
+| her_explained_variance | -0.269   |
+| her_loss               | -0.0149  |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.0016  |
+| her_loss_policy        | -0.0016  |
+| her_loss_q             | 0.000429 |
+| her_norm_grads         | 0.0383   |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 300000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 800      |
+| episode_return         | -2.4     |
+| fps                    | 1981     |
+| her_entropy            | 1.32     |
+| her_explained_variance | -0.404   |
+| her_loss               | 0.0171   |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.0299   |
+| her_loss_policy        | 0.0299   |
+| her_loss_q             | 0.000799 |
+| her_norm_grads         | 0.0689   |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 320000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 263      |
+| episode_return         | -0.0472  |
+| fps                    | 1977     |
+| her_entropy            | 1.37     |
+| her_explained_variance | -2.24    |
+| her_loss               | 0.0823   |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.0931   |
+| her_loss_policy        | 0.0931   |
+| her_loss_q             | 0.00571  |
+| her_norm_grads         | 0.184    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 340000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 467      |
+| episode_return         | -0.865   |
+| fps                    | 1966     |
+| her_entropy            | 1.37     |
+| her_explained_variance | -2.35    |
+| her_loss               | 0.0433   |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.0549   |
+| her_loss_policy        | 0.0549   |
+| her_loss_q             | 0.00421  |
+| her_norm_grads         | 0.128    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 360000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 617      |
+| episode_return         | -1.57    |
+| fps                    | 1966     |
+| her_entropy            | 1.35     |
+| her_explained_variance | -0.0877  |
+| her_loss               | -0.0305  |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.0172  |
+| her_loss_policy        | -0.0172  |
+| her_loss_q             | 0.000359 |
+| her_norm_grads         | 0.0385   |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 380000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 418      |
+| episode_return         | -0.668   |
+| fps                    | 1968     |
+| her_entropy            | 1.32     |
+| her_explained_variance | -1.25    |
+| her_loss               | -0.119   |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.108   |
+| her_loss_policy        | -0.108   |
+| her_loss_q             | 0.00409  |
+| her_norm_grads         | 0.178    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 400000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 456      |
+| episode_return         | -0.82    |
+| fps                    | 1964     |
+| her_entropy            | 1.38     |
+| her_explained_variance | -0.343   |
+| her_loss               | -0.0296  |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.0159  |
+| her_loss_policy        | -0.0159  |
+| her_loss_q             | 0.000206 |
+| her_norm_grads         | 0.0278   |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 420000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 401      |
+| episode_return         | -0.6     |
+| fps                    | 1961     |
+| her_entropy            | 1.33     |
+| her_explained_variance | -4.38    |
+| her_loss               | 0.364    |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.359    |
+| her_loss_policy        | 0.359    |
+| her_loss_q             | 0.0374   |
+| her_norm_grads         | 0.47     |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 440000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 132      |
+| episode_return         | 0.477    |
+| fps                    | 1954     |
+| her_entropy            | 1.35     |
+| her_explained_variance | -0.177   |
+| her_loss               | -0.0683  |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.0553  |
+| her_loss_policy        | -0.0553  |
+| her_loss_q             | 0.00111  |
+| her_norm_grads         | 0.0727   |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 460000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 559      |
+| episode_return         | -1.33    |
+| fps                    | 1951     |
+| her_entropy            | 1.26     |
+| her_explained_variance | 0.39     |
+| her_loss               | -0.0996  |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.0883  |
+| her_loss_policy        | -0.0883  |
+| her_loss_q             | 0.00247  |
+| her_norm_grads         | 0.116    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 480000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 212      |
+| episode_return         | 0.157    |
+| fps                    | 1952     |
+| her_entropy            | 1.35     |
+| her_explained_variance | -0.844   |
+| her_loss               | 0.06     |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.0721   |
+| her_loss_policy        | 0.0721   |
+| her_loss_q             | 0.00281  |
+| her_norm_grads         | 0.102    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 500000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 455      |
+| episode_return         | -0.815   |
+| fps                    | 1953     |
+| her_entropy            | 1.36     |
+| her_explained_variance | 0.0141   |
+| her_loss               | -0.0842  |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.0715  |
+| her_loss_policy        | -0.0715  |
+| her_loss_q             | 0.00184  |
+| her_norm_grads         | 0.088    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 520000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 120      |
+| episode_return         | 0.523    |
+| fps                    | 1955     |
+| her_entropy            | 1.22     |
+| her_explained_variance | -0.138   |
+| her_loss               | -0.0412  |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.0323  |
+| her_loss_policy        | -0.0323  |
+| her_loss_q             | 0.00651  |
+| her_norm_grads         | 0.108    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 540000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 136      |
+| episode_return         | 0.462    |
+| fps                    | 1951     |
+| her_entropy            | 1.37     |
+| her_explained_variance | 0.0486   |
+| her_loss               | -0.157   |
+| her_loss_bc            | -0       |
+| her_loss_f             | -0.146   |
+| her_loss_policy        | -0.146   |
+| her_loss_q             | 0.00596  |
+| her_norm_grads         | 0.181    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 560000   |
+-------------------------------------
+-------------------------------------
+| episode_length         | 265      |
+| episode_return         | -0.0556  |
+| fps                    | 1952     |
+| her_entropy            | 1.31     |
+| her_explained_variance | -2.63    |
+| her_loss               | 0.575    |
+| her_loss_bc            | -0       |
+| her_loss_f             | 0.54     |
+| her_loss_policy        | 0.54     |
+| her_loss_q             | 0.0963   |
+| her_norm_grads         | 0.641    |
+| memory_usage(GB)       | 0        |
+| rewards                | 0        |
+| total_timesteps        | 580000   |
+-------------------------------------
