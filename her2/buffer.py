@@ -6,7 +6,7 @@ from her.util import vf_dist
 
 class Buffer(object):
     # gets obs, actions, rewards, mu's, (states, masks), dones
-    def __init__(self, env, sample_goal_fn, reward_fn, nsteps, goal_shape, size=50000):
+    def __init__(self, env, sample_goal_fn, reward_fn, nsteps, goal_shape, her, size=50000):
         self.nenv = env.num_envs
         self.nsteps = nsteps
         assert callable(sample_goal_fn)
@@ -19,26 +19,25 @@ class Buffer(object):
         self.obs_dtype = env.observation_space.dtype
         self.ac_dtype = env.action_space.dtype
         self.goal_shape = goal_shape
-        self.nc = self.obs_shape[-1]
-        self.nstack = env.nstack
-        self.nc //= self.nstack
-        self.nbatch = self.nenv * self.nsteps
-        self.size = size // (
-        self.nsteps)  # Each loc contains nenv * nsteps frames, thus total buffer is nenv * size frames
 
+        self.nbatch = self.nenv * self.nsteps
+        self.size = size // self.nsteps  # Each loc contains nenv * nsteps frames, thus total buffer is nenv * size frames
+
+        self.maze_size = np.prod([int(x) for x in env.spec.id.split("-")[2].split("x")])
+        self.her_gain = 0.
         # Memory
         self.obs = None
         self.actions = None
-        self.ext_rewards = None
+        self.rewards = None
         self.mus = None
         self.dones = None
         self.masks = None
         self.goals = None
-        self.obs_infos = None
-        self.goal_infos = None
         # Size indexes
         self.next_idx = 0
         self.num_in_buffer = 0
+
+        self.her = her
 
     def has_atleast(self, frames):
         # Frames per env, so total (nenv * frames) Frames needed
@@ -61,31 +60,26 @@ class Buffer(object):
         # enc_obs [nenv, (nsteps + nstack), nh, nw, nc]
         # actions, rewards, dones [nenv, nsteps]
         # mus [nenv, nsteps, nact]
-        obs, actions, ext_rewards, mus, dones, masks, goal_obs, goal_infos, obs_infos = \
-            episode_batch["obs"], episode_batch["actions"], episode_batch["ext_rewards"], episode_batch["mus"],\
-            episode_batch["dones"], episode_batch["masks"], episode_batch["goal_obs"], episode_batch["goal_infos"],\
-            episode_batch["obs_infos"]
+        obs, actions, rewards, mus, dones, masks, goal_obs = \
+            episode_batch["obs"], episode_batch["actions"], episode_batch["rewards"], episode_batch["mus"],\
+            episode_batch["dones"], episode_batch["masks"], episode_batch["goal_obs"],
 
         if self.obs is None:
             self.obs = np.empty([self.size] + list(obs.shape), dtype=self.obs_dtype)
             self.actions = np.empty([self.size] + list(actions.shape), dtype=self.ac_dtype)
-            self.ext_rewards = np.empty([self.size] + list(ext_rewards.shape), dtype=np.float32)
+            self.rewards = np.empty([self.size] + list(rewards.shape), dtype=np.float32)
             self.mus = np.empty([self.size] + list(mus.shape), dtype=np.float32)
             self.dones = np.empty([self.size] + list(dones.shape), dtype=np.bool)
             self.masks = np.empty([self.size] + list(masks.shape), dtype=np.bool)
             self.goals = np.empty([self.size] + list(goal_obs.shape), dtype=self.obs_dtype)
-            self.goal_infos = np.empty([self.size] + list(goal_infos.shape), dtype=object)
-            self.obs_infos = np.empty([self.size] + list(obs_infos.shape), dtype=object)
 
         self.obs[self.next_idx] = obs
         self.actions[self.next_idx] = actions
-        self.ext_rewards[self.next_idx] = ext_rewards
+        self.rewards[self.next_idx] = rewards
         self.mus[self.next_idx] = mus
         self.dones[self.next_idx] = dones
         self.masks[self.next_idx] = masks
         self.goals[self.next_idx] = goal_obs
-        self.goal_infos[self.next_idx] = goal_infos
-        self.obs_infos[self.next_idx] = obs_infos
         self.next_idx = (self.next_idx + 1) % self.size
         self.num_in_buffer = min(self.size, self.num_in_buffer + 1)
 
@@ -114,28 +108,22 @@ class Buffer(object):
 
         obs = take(self.obs)  # (nenv, nstep+1, nh, nw, nc)
         actions = take(self.actions)
-        ext_rewards = take(self.ext_rewards)
+        rewards = take(self.rewards)
         mus = take(self.mus)
         masks = take(self.masks)
 
-        results = dict(obs=obs, actions=actions, ext_rewards=ext_rewards, mus=mus, dones=dones, masks=masks)
+        results = dict(obs=obs, actions=actions, rewards=rewards, mus=mus, dones=dones, masks=masks)
         goal_obs = take(self.goals)  # (nenv, nstep, nh, nw, nc)
 
-        goal_infos = take(self.goal_infos)
-        obs_infos = take(self.obs_infos)
-
-        her_idx, future_idx = self.sample_goal_fn(dones)
-
-        origin_dist = np.sum(vf_dist(obs_infos, goal_infos))
-        goal_obs[her_idx] = obs[:, 1:][future_idx]
-        goal_infos[her_idx] = obs_infos[future_idx]
-        new_dist = np.sum(vf_dist(obs_infos, goal_infos))
-        her_gain = origin_dist - new_dist
-        int_rewards = self.reward_fn(obs_infos, goal_infos)
+        if self.her:
+            her_idx, future_idx = self.sample_goal_fn(dones)
+            goal_obs[her_idx] = obs[:, 1:][future_idx]
+            new_rewards = self.reward_fn(obs[:, 1:], goal_obs, self.maze_size)
+            results["rewards"] = new_rewards
+            self.her_gain = new_rewards - rewards
+        results["her_gain"] = self.her_gain
         results["goal_obs"] = goal_obs
-        results["int_rewards"] = int_rewards
-        results["goal_infos"] = goal_infos
-        results["her_gain"] = her_gain
+
         return results
 
     @property
@@ -143,8 +131,7 @@ class Buffer(object):
         if self.obs is None:
             return 0.
         else:
-            usage = sys.getsizeof(self.obs) + sys.getsizeof(self.goals) + sys.getsizeof(self.actions) * 5 + \
-                   sys.getsizeof(self.goal_infos) * 2
+            usage = sys.getsizeof(self.obs) + sys.getsizeof(self.goals) + sys.getsizeof(self.actions) * 5
             return usage // (1024 ** 3)
 
 

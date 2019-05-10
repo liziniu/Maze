@@ -41,7 +41,8 @@ def q_retrace(R, D, q_i, v, rho_i, nenvs, nsteps, gamma):
         check_shape([qret, ds[i], rs[i], rho_bar[i], q_is[i], vs[i]], [[nenvs]] * 6)
         qret = rs[i] + gamma * qret * (1.0 - ds[i])
         qrets.append(qret)
-        qret = (rho_bar[i] * (qret - q_is[i])) + vs[i]
+        if i > 0:
+            qret = (rho_bar[i] * (qret - q_is[i])) + vs[i-1]
     qrets = qrets[::-1]
     qret = seq_to_batch(qrets, flat=True)
     return qret
@@ -59,6 +60,7 @@ class Model(object):
                  alpha, delta, scope,  goal_shape):
         self.sess = sess
         self.nenv = nenvs
+        self.nsteps = nsteps
         self.goal_shape = goal_shape
 
         nact = ac_space.n
@@ -140,8 +142,7 @@ class Model(object):
         rho_i = get_by_index(rho, self.A)
 
         # Calculate Q_retrace targets
-        qret = q_retrace(self.R, self.D, q_i, self.V_NEXT, rho_i, nenvs, nsteps, gamma)  # (todo by lizn, use new next state value)
-
+        qret = q_retrace(self.R, self.D, q_i, self.V_NEXT, rho_i, nenvs, nsteps, gamma)  # (todo by lizn, use new next state value) = q_retrace()
         # Calculate losses
         # Entropy
         # entropy = tf.reduce_mean(strip(self.train_model.pd.entropy(), nenvs, nsteps))
@@ -248,6 +249,11 @@ class Model(object):
         td_map = {self.train_model.X: obs, self.polyak_model.X: obs, self.A: actions, self.R: rewards, self.D: dones,
                   self.MU: mus, self.LR: cur_lr, self.V_NEXT: v_next}
 
+        ##########################################
+        debug = False
+        if debug:
+            self._test(obs, next_obs, actions, rewards, dones, mus, goal_obs )
+        ############################################
         assert hasattr(self.train_model, "goals")
         assert hasattr(self.polyak_model, "goals")
         if hasattr(self, "goal_rms"):
@@ -271,3 +277,53 @@ class Model(object):
     def step(self, observation, **kwargs):
         return self.step_model.evaluate([self.step_model.action, self.step_model_p, self.step_model.state],
                                         observation, **kwargs)
+
+    def _test(self, obs, next_obs, actions, rewards, dones, mus, goal_obs):
+        _obs, _next_obs, _actions, _dones, _goals, _mus, _rewards = self.generate_fake(obs, next_obs, actions, dones,
+                                                                                       goal_obs, mus, rewards)
+        td_map = dict()
+        td_map[self.train_model.goals] = _goals
+        td_map[self.train_model.X] = _next_obs
+        v_next = self.sess.run(self.v, feed_dict=td_map)
+        print("v_next", v_next)
+        td_map[self.train_model.X] = _obs
+        td_map[self.A] = _actions
+        td_map[self.R] = _rewards
+        td_map[self.MU] = _mus
+        td_map[self.D] = _dones
+        td_map[self.V_NEXT] = v_next
+        print("------td map--------")
+        print(td_map)
+        print("------td map--------")
+        print("-------q_iter--------")
+        q_iter = self.sess.run(self.q_iter, feed_dict=td_map)
+        print(q_iter)
+        print("-------q_iter--------")
+        print("-------q_iter_after--------")
+        q_iter_after = self.sess.run(self.q_iter, feed_dict=td_map)
+        print(q_iter_after)
+        print("-------q_iter_after--------")
+        print("--------rs---------")
+        rs = self.sess.run(self.rs, feed_dict=td_map)
+        print(rs)
+        print("--------rs---------")
+        q_i, rho_i, qret = self.sess.run([self.q_i, self.rho_i, self.qret], feed_dict=td_map)
+        print("q_i", q_i)
+        print("rho_i", rho_i)
+        print("q_ret", qret)
+        assert 0
+
+    def generate_fake(self, obs, next_obs, actions, dones, goals, mus, rewards):
+        obs_new = np.random.randn(self.nenv, self.nsteps+1, *obs.shape[1:])
+        _obs = obs_new[:, :-1].reshape((-1, ) + obs.shape[1:])
+        _next_obs = obs_new[:, 1:].reshape((-1, ) + next_obs.shape[1:])
+        _actions = np.ones_like(actions)
+        _dones = dones
+        _goals = np.zeros_like(goals)
+        _mus = np.random.randn(*mus.shape)
+        _mus = _mus / np.sum(_mus, axis=-1, keepdims=True)
+        print(self.sess.run(self.params))
+        print("obs", obs)
+        print("_obs", obs_new)
+        _rewards = np.ones_like(rewards)
+        return _obs, _next_obs, _actions, _dones, _goals, _mus, _rewards

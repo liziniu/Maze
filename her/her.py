@@ -3,25 +3,23 @@ import numpy as np
 from baselines import logger
 from baselines.common import set_global_seeds
 from acer.policies import build_policy
-from common.env_util import VecFrameStack
 from her.buffer import Buffer
 from her.runner import Runner
 from common.her_sample import make_sample_her_transitions
 from her.model import Model
-from her.util import Acer, vf_dist
-import sys
+from her.util import Acer
 from baselines.common.tf_util import get_session
+import sys
 import os
-from common.buffer import ReplayBuffer
-from her.defaults import get_store_keys, THRESHOLD
+from her.buffer2 import ReplayBuffer
+from her.defaults import get_store_keys
 
 
 def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
           max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,
-          log_interval=50, buffer_size=50000, replay_ratio=4, replay_start=10000, c=10.0, trust_region=True,
-          alpha=0.99, delta=1, replay_k=4, load_path=None, env_eval=None, eval_interval=300, dist_type="l1",
-          save_model=False, simple_store=True, goal_shape=(84, 84, 4), nb_train_epoch=4, desired_x_pos=None,
-          her=True, buffer2=True, **network_kwargs):
+          log_interval=100, buffer_size=50000, replay_ratio=4, replay_start=10000, c=10.0, trust_region=True,
+          alpha=0.99, delta=1, replay_k=1, env_eval=None, eval_interval=300, save_model=False,
+          goal_shape=(2,), nb_train_epoch=4, her=True, buffer2=True, save_interval=0, **network_kwargs):
 
     '''
     Main entrypoint for ACER (Actor-Critic with Experience Replay) algorithm (https://arxiv.org/pdf/1611.01224.pdf)
@@ -86,28 +84,25 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
                                     For instance, 'mlp' network architecture has arguments num_hidden and num_layers.
 
     '''
-    if sys.platform == "darwin":
-        log_interval = 5
-        replay_start = 10
+    if not her:
+        save_interval = 0
 
     logger.info("Running Acer with following kwargs")
     logger.info(locals())
     logger.info("\n")
 
     set_global_seeds(seed)
-    if not isinstance(env, VecFrameStack):
-        env = VecFrameStack(env, 1)
 
     if env_eval is None:
         raise ValueError("env_eval is required!")
 
+    network_kwargs = {"layer_norm": True}
     policy = build_policy(env, network, estimate_q=True, **network_kwargs)
     nenvs = env.num_envs
     nenvs_eval = env_eval.num_envs
     ob_space = env.observation_space
     ac_space = env.action_space
 
-    nstack = env.nstack
     sess = get_session()
 
     model = Model(
@@ -116,32 +111,19 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
         rprop_epsilon=rprop_epsilon, total_timesteps=total_timesteps, lrschedule=lrschedule, c=c,
         trust_region=trust_region, alpha=alpha, delta=delta, scope="her", goal_shape=goal_shape)
 
-    def reward_fn_v1(current_state, desired_goal):
-        eps = 1e-6
-        return np.exp(-np.sum(np.square(current_state-desired_goal), -1) /
-                        (eps+np.sum(np.square(desired_goal), -1)))
-
-    def reward_fn_v2(current_pos_infos, goal_pos_infos, sparse=True):
-        assert current_pos_infos.shape == goal_pos_infos.shape
-        coeff = 0.03
-        threshold = THRESHOLD
-
-        dist = vf_dist(current_pos_infos, goal_pos_infos)
-        if sparse:
-            rewards = (dist < threshold).astype(float)
-        else:
-            rewards = np.exp(-coeff * dist)
+    def reward_fn(current_obs, desired_pos, maze_size):
+        nenv, nsteps = current_obs.shape[:2]
+        rewards = np.empty([nenv, nsteps], dtype=np.float32)
+        for i in range(nenv):
+            for j in range(nsteps):
+                if np.all(current_obs[i][j] == desired_pos[i][j]):
+                    rewards[i][j] = 1.0
+                else:
+                    rewards[i][j] = -0.1 / maze_size
         return rewards
 
-    assert dist_type in ["l1", "l2"]
-    if dist_type == "l2":
-        reward_fn = reward_fn_v1
-    else:
-        reward_fn = reward_fn_v2
-
     # we still need two runner to avoid one reset others' envs.
-    runner = Runner(env=env, model=model, nsteps=nsteps, reward_fn=reward_fn, load_path=load_path,
-                    desired_x_pos=desired_x_pos)
+    runner = Runner(env=env, model=model, nsteps=nsteps, save_interval=save_interval)
 
     if replay_ratio > 0:
         if her:
@@ -158,18 +140,16 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
         assert env.num_envs == env_eval.num_envs
         if buffer2:
             buffer = ReplayBuffer(env=env, sample_goal_fn=sample_goal_fn, nsteps=nsteps, size=buffer_size,
-                                  keys=get_store_keys(), reward_fn=reward_fn)
+                                  keys=get_store_keys(), reward_fn=reward_fn, her=her)
         else:
             buffer = Buffer(env=env, nsteps=nsteps, size=buffer_size, reward_fn=reward_fn, sample_goal_fn=sample_goal_fn,
-                            goal_shape=model.goal_shape)
+                            goal_shape=model.goal_shape, her=her)
     else:
         buffer = None
     acer = Acer(runner, model, buffer, log_interval,)
     acer.tstart = time.time()
 
     # === init to make sure we can get goal ===
-
-    replay_start = replay_start * env.num_envs / (env.num_envs + env_eval.num_envs)
     onpolicy_cnt = 0
 
     while acer.steps < total_timesteps:

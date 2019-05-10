@@ -5,7 +5,7 @@ from her2.util import vf_dist
 
 
 class ReplayBuffer:
-    def __init__(self, env, sample_goal_fn, reward_fn, nsteps, size, keys):
+    def __init__(self, env, sample_goal_fn, reward_fn, nsteps, size, keys, her):
         """Creates a replay buffer.
 
         Args:
@@ -15,7 +15,7 @@ class ReplayBuffer:
         """
         nenv = self.nenv = env.num_envs
         self.nsteps = nsteps
-        self.size = size // (nenv * self.nsteps)
+        self.size = size // self.nsteps
         self.sample_goal_fn = sample_goal_fn
         self.reward_fn = reward_fn
 
@@ -27,6 +27,9 @@ class ReplayBuffer:
         self.buffers = [{key: None for key in keys} for _ in range(nenv)]
         self._cache = [{} for _ in range(self.nenv)]
 
+        self.maze_size = np.prod([int(x) for x in env.spec.id.split("-")[2].split("x")])
+
+        self.her = her
         self.her_gain = 0.
 
         # memory management
@@ -36,7 +39,7 @@ class ReplayBuffer:
     def get(self, use_cache, downsample=True):
         """Returns a dict {key: array(batch_size x shapes[key])}
         """
-        samples = {key: [] for key in self.keys + ["int_rewards"]}
+        samples = {key: [] for key in self.keys}
         if not use_cache:
             cache = [{} for _ in range(self.nenv)]
             for i in range(self.nenv):
@@ -50,39 +53,37 @@ class ReplayBuffer:
                 else:
                     start, end = 0, self.current_size
                 for key in self.keys:
-                    if key in ["obs", "masks"]:
+                    if key in ["obs", "masks", "goal_obs"]:
                         cache[i][key] = self.buffers[i][key][start*(self.nsteps+1):end*(self.nsteps+1)].copy()
                     else:
                         cache[i][key] = self.buffers[i][key][start*self.nsteps:end*self.nsteps].copy()
-            self.her_gain = 0.
-            for i in range(self.nenv):
-                dones = cache[i]["dones"]
-                her_index, future_index = self.sample_goal_fn(dones)
-                origin_dist = np.mean(vf_dist(cache[i]["obs_infos"], cache[i]["goal_infos"]))
-                next_obs_decoded = decode_obs(cache[i]["obs"], self.nsteps)
-                cache[i]["goal_obs"][her_index] = next_obs_decoded[future_index]
-                cache[i]["goal_infos"][her_index] = cache[i]["obs_infos"][future_index]
-                new_dist = np.mean(vf_dist(cache[i]["obs_infos"], cache[i]["goal_infos"]))
-                self.her_gain += origin_dist - new_dist
-            self.her_gain /= self.nenv
+            if self.her:
+                for i in range(self.nenv):
+                    dones = cache[i]["dones"]
+                    her_index, future_index = self.sample_goal_fn(dones)
+                    next_obs_decoded = decode_obs(cache[i]["obs"], self.nsteps)
+                    cache[i]["goal_obs"][her_index] = next_obs_decoded[future_index]
             self._cache = cache.copy()
         else:
             cache = self._cache.copy()
+
         for i in range(self.nenv):
             transitions = cache[i]
             real_size = len(transitions["obs"]) // (self.nsteps + 1)
             index = np.random.randint(0, real_size)
             for key in self.keys:
-                if key in ["obs", "masks"]:
+                if key in ["obs", "masks", "goal_obs"]:
                     start, end = index*(self.nsteps+1), (index+1)*(self.nsteps+1)
                 else:
                     start, end = index*self.nsteps, (index+1)*self.nsteps
                 samples[key].append(transitions[key][start:end])
-            int_rewards = self.reward_fn(samples["obs_infos"][i], samples["goal_infos"][i])
-            samples["int_rewards"].append(int_rewards)
-        for key in self.keys + ["int_rewards"]:
+        for key in self.keys:
             samples[key] = np.asarray(samples[key])
-        samples["her_gain"] = self.her_gain
+        if self.her:
+            rewards = np.mean(samples["rewards"])
+            new_rewards = self.reward_fn(samples["obs"][:, :-1], samples["goal_obs"], self.maze_size)
+            samples["her_gain"] = new_rewards - rewards
+            samples["rewards"] = new_rewards
         return samples
 
     def put(self, episode_batch):
@@ -97,12 +98,12 @@ class ReplayBuffer:
             for key in self.keys:
                 x = episode_batch[key][i]
                 if self.buffers[i][key] is None:
-                    if key in ["obs", "masks"]:
+                    if key in ["obs", "masks", "goal_obs"]:
                         maxlen = self.size * (self.nsteps + 1)
                     else:
                         maxlen = self.size * self.nsteps
                     self.buffers[i][key] = np.empty((maxlen, ) + x.shape[1:], dtype=x.dtype)
-                if key in ["obs", "masks"]:
+                if key in ["obs", "masks", "goal_obs"]:
                     start, end = self.current_size*(self.nsteps+1), (self.current_size+1)*(self.nsteps+1)
                     self.buffers[i][key][start:end] = x
                 else:
@@ -121,7 +122,7 @@ class ReplayBuffer:
     def has_atleast(self, frames):
         # Frames per env, so total (nenv * frames) Frames needed
         # Each buffer loc has nenv * nsteps frames
-        return self.current_size * self.nsteps * self.nenv >= frames
+        return self.current_size * self.nsteps >= frames
 
 
 def decode_obs(enc_obs, nsteps):

@@ -30,8 +30,8 @@ class Runner(AbstractEnvRunner):
         epinfos = []
         # For n in range number of steps
         for _ in range(self.nsteps):
-            if self.episode % 100 == 0:
-                self.env.render()
+            # if self.episode % 100 == 0:
+            #     self.env.render()
             # Given observations, get action value and neglopacs
             # We already have self.obs because Runner superclass run self.obs[:] = env.reset() on init
             obs_tmp = self.obs.copy()

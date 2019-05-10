@@ -1,5 +1,4 @@
 
-
 THRESHOLD = 6
 
 
@@ -14,5 +13,5 @@ def atari():
 
 
 def get_store_keys():
-    return ["obs", "actions", "ext_rewards", "mus", "dones",
-            "masks", "goal_obs", "goal_infos",  "obs_infos"]
+    return ["obs", "actions", "rewards", "mus", "dones",
+            "masks", "goal_obs",]

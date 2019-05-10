@@ -15,7 +15,7 @@ class ReplayBuffer:
         """
         nenv = self.nenv = env.num_envs
         self.nsteps = nsteps
-        self.size = size // (nenv * self.nsteps)
+        self.size = size // self.nsteps
         self.sample_goal_fn = sample_goal_fn
         self.reward_fn = reward_fn
 
@@ -29,6 +29,7 @@ class ReplayBuffer:
 
         self.her = her
         self.her_gain = 0.
+        self.maze_size = np.prod([int(x) for x in env.spec.id.split("-")[2].split("x")])
 
         # memory management
         self.lock = threading.Lock()
@@ -38,6 +39,7 @@ class ReplayBuffer:
         """Returns a dict {key: array(batch_size x shapes[key])}
         """
         samples = {key: [] for key in self.keys}
+        samples["her_gain"] = 0.
         if not use_cache:
             cache = [{} for _ in range(self.nenv)]
             for i in range(self.nenv):
@@ -61,8 +63,6 @@ class ReplayBuffer:
                     her_index, future_index = self.sample_goal_fn(dones)
                     next_obs_decoded = decode_obs(cache[i]["obs"], self.nsteps)
                     cache[i]["goal_obs"][her_index] = next_obs_decoded[future_index]
-                    rewards = self.reward_fn(next_obs_decoded, cache[i]["goal_obs"])
-                    cache[i]["rewards"] = rewards
             self._cache = cache.copy()
         else:
             cache = self._cache.copy()
@@ -77,8 +77,14 @@ class ReplayBuffer:
                 else:
                     start, end = index*self.nsteps, (index+1)*self.nsteps
                 samples[key].append(transitions[key][start:end])
+
         for key in self.keys:
             samples[key] = np.asarray(samples[key])
+        if self.her:
+            rewards = np.mean(samples["rewards"])
+            new_rewards = self.reward_fn(samples["obs"][:, :-1], samples["goal_obs"], self.maze_size)
+            samples["her_gain"] = new_rewards - rewards
+            samples["rewards"] = new_rewards
         return samples
 
     def put(self, episode_batch):
@@ -117,7 +123,7 @@ class ReplayBuffer:
     def has_atleast(self, frames):
         # Frames per env, so total (nenv * frames) Frames needed
         # Each buffer loc has nenv * nsteps frames
-        return self.current_size * self.nsteps * self.nenv >= frames
+        return self.current_size * self.nsteps >= frames
 
 
 def decode_obs(enc_obs, nsteps):

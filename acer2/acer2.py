@@ -261,6 +261,7 @@ class Acer():
         if on_policy and (int(steps/runner.nbatch) % self.log_interval == 0):
             logger.record_tabular("total_timesteps", steps)
             logger.record_tabular("fps", int(steps/(time.time() - self.tstart)))
+            logger.record_tabular("rewards", np.mean(rewards))
             # IMP: In EpisodicLife env, during training, we get done=True at each loss of life, not just at the terminal state.
             # Thus, this is mean until end of life, not end of episode.
             # For true episode rewards, see the monitor files in the log folder.

@@ -59,13 +59,6 @@ class Model(object):
         self.sess = sess
         self.nenv = nenvs
         self.goal_shape = goal_shape
-        self.goal_as_image = goal_as_image = len(goal_shape) == 3
-        if self.goal_as_image:
-            assert self.goal_shape == ob_space.shape
-        else:
-            logger.info("normalize goal using RunningMeanStd")
-            with tf.variable_scope("RunningMeanStd", reuse=tf.AUTO_REUSE):
-                self.goal_rms = RunningMeanStd(epsilon=1e-4, shape=self.goal_shape)
 
         nact = ac_space.n
         nbatch = nenvs * nsteps
@@ -80,27 +73,15 @@ class Model(object):
             self.LR = tf.placeholder(tf.float32, [], name="lr")
 
             step_ob_placeholder = tf.placeholder(ob_space.dtype, (nenvs,) + ob_space.shape, "step_ob")
-            if goal_as_image:
-                step_goal_placeholder = tf.placeholder(ob_space.dtype, (nenvs,) + ob_space.shape, "step_goal")
-                concat_on_latent, train_goal_encoded, step_goal_encoded = False, None, None
-            else:
-                step_goal_placeholder = tf.placeholder(tf.float32, (nenvs,) + goal_shape, "step_goal")
-                step_goal_encoded = tf.clip_by_value(
-                    (step_goal_placeholder - self.goal_rms.mean) / self.goal_rms.std,
-                    -5., 5.)
+            step_goal_placeholder = tf.placeholder(tf.float32, (nenvs,) + goal_shape, "step_goal")
+            step_goal_encoded = step_goal_placeholder
 
             train_ob_placeholder = tf.placeholder(ob_space.dtype, (nenvs * (nsteps + 1),) + ob_space.shape, "train_ob")
-            if goal_as_image:
-                train_goal_placeholder = tf.placeholder(ob_space.dtype, (nenvs * (nsteps + 1),) + ob_space.shape,
-                                                        "train_goal")
-                concat_on_latent, train_goal_encoded = False, None
-            else:
-                train_goal_placeholder = tf.placeholder(tf.float32, (nenvs * (nsteps + 1),) + goal_shape,
-                                                        "train_goal")
-                concat_on_latent = True
-                train_goal_encoded = tf.clip_by_value(
-                    (train_goal_placeholder - self.goal_rms.mean) / self.goal_rms.std,
-                    -5., 5.)
+            train_goal_placeholder = tf.placeholder(tf.float32, (nenvs * (nsteps + 1),) + goal_shape,
+                                                    "train_goal")
+            train_goal_encoded = train_goal_placeholder
+            concat_on_latent = False
+
             self.step_model = policy(nbatch=nenvs, nsteps=1, observ_placeholder=step_ob_placeholder, sess=self.sess,
                                      goal_placeholder=step_goal_placeholder, concat_on_latent=concat_on_latent,
                                      goal_encoded=step_goal_encoded)
@@ -141,7 +122,7 @@ class Model(object):
         train_model_p = tf.nn.softmax(self.train_model.pi)
         polyak_model_p = tf.nn.softmax(self.polyak_model.pi)
         self.step_model_p = tf.nn.softmax(self.step_model.pi)
-        v = tf.reduce_sum(train_model_p * self.train_model.q, axis=-1)  # shape is [nenvs * (nsteps + 1)]
+        self.v = v = tf.reduce_sum(train_model_p * self.train_model.q, axis=-1)  # shape is [nenvs * (nsteps + 1)]
 
         # strip off last step
         f, f_pol, q = map(lambda var: strip(var, nenvs, nsteps), [train_model_p, polyak_model_p, self.train_model.q])
@@ -154,7 +135,7 @@ class Model(object):
         rho_i = get_by_index(rho, self.A)
 
         # Calculate Q_retrace targets
-        qret = q_retrace(self.R, self.D, q_i, v, rho_i, nenvs, nsteps, gamma)
+        self.qret = qret = q_retrace(self.R, self.D, q_i, v, rho_i, nenvs, nsteps, gamma)
 
         # Calculate losses
         # Entropy
@@ -258,6 +239,22 @@ class Model(object):
         assert hasattr(self.polyak_model, "goals")
         if hasattr(self, "goal_rms"):
             self.goal_rms.update(goal_obs)
+        ################################################
+        debug = False
+        if debug:
+            _obs, _actions, _dones, _goals, _mus, _rewards = self.generate_fake(obs, actions, dones, goal_obs, mus, rewards)
+            td_map[self.train_model.goals] = _goals
+            td_map[self.train_model.X] = _obs
+            v = self.sess.run(self.v, feed_dict=td_map)
+            print("v", v)
+            td_map[self.A] = _actions
+            td_map[self.R] = _rewards
+            td_map[self.MU] = _mus
+            td_map[self.D] = _dones
+            qret = self.sess.run(self.qret, feed_dict=td_map)
+            print("q_ret", qret)
+            assert 0
+        ################################################
         td_map[self.train_model.goals] = goal_obs
         td_map[self.polyak_model.goals] = goal_obs
         if states is not None:
@@ -277,3 +274,17 @@ class Model(object):
     def step(self, observation, **kwargs):
         return self.step_model.evaluate([self.step_model.action, self.step_model_p, self.step_model.state],
                                         observation, **kwargs)
+
+    def generate_fake(self, obs, actions, dones, goals, mus, rewards):
+        _obs = np.ones_like(obs)
+        _actions = np.ones_like(actions)
+        _dones = dones
+        _goals = np.zeros_like(goals)
+        _mus = np.random.randn(*mus.shape)
+        _mus = _mus / np.sum(_mus, axis=-1, keepdims=True)
+        print(self.sess.run(self.params))
+        print("obs", obs)
+        print("_mus", _mus)
+        print("_dones", _dones)
+        _rewards = np.ones_like(rewards)
+        return _obs, _actions, _dones, _goals, _mus, _rewards

@@ -11,7 +11,6 @@ from baselines import logger
 from baselines.common.tf_util import get_session
 from baselines.common.vec_env import VecFrameStack, VecNormalize, VecEnv
 from baselines.common.vec_env.vec_video_recorder import VecVideoRecorder
-from curiosity.dynamics import DummyDynamics, Dynamics
 from common.cmd_util import common_arg_parser, parse_unknown_args, parse_acer_mode
 from common.env_util import build_env
 import gym_maze
@@ -192,7 +191,6 @@ def main(args):
 
     shutil.copytree(os.path.join(os.getcwd(), args.alg), os.path.join(path, "code", args.alg))
     shutil.copytree(os.path.join(os.getcwd(), "common"), os.path.join(path, "code", "common"))
-    shutil.copytree(os.path.join(os.getcwd(), "curiosity"), os.path.join(path, "code", "curiosity"))
     logger.info("cmd args:{}".format(args.__dict__))
     model, env = train(args, extra_args)
 

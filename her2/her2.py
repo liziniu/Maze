@@ -18,7 +18,7 @@ from her2.defaults import get_store_keys
 def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
           max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,
           log_interval=100, buffer_size=50000, replay_ratio=4, replay_start=10000, c=10.0, trust_region=True,
-          alpha=0.99, delta=1, replay_k=4, env_eval=None, eval_interval=300, save_model=False,
+          alpha=0.99, delta=1, replay_k=1, env_eval=None, eval_interval=300, save_model=False,
           goal_shape=(2,), nb_train_epoch=4, her=True, buffer2=True, save_interval=0, **network_kwargs):
 
     '''
@@ -96,6 +96,7 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
     if env_eval is None:
         raise ValueError("env_eval is required!")
 
+    network_kwargs = {"layer_norm": True}
     policy = build_policy(env, network, estimate_q=True, **network_kwargs)
     nenvs = env.num_envs
     nenvs_eval = env_eval.num_envs
@@ -110,15 +111,15 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
         rprop_epsilon=rprop_epsilon, total_timesteps=total_timesteps, lrschedule=lrschedule, c=c,
         trust_region=trust_region, alpha=alpha, delta=delta, scope="her", goal_shape=goal_shape)
 
-    def reward_fn(current_obs, desired_pos, size):
+    def reward_fn(current_obs, desired_pos, maze_size):
         nenv, nsteps = current_obs.shape[0], current_obs.shape[1]
         rewards = np.empty([nenv, nsteps], dtype=np.float32)
         for i in range(nenv):
             for j in range(nsteps):
-                if current_obs[i][j] == desired_pos:
+                if np.all(current_obs[i][j] == desired_pos[i][j]):
                     rewards[i][j] = 1.0
                 else:
-                    rewards[i][j] = -0.1 / size
+                    rewards[i][j] = -0.1 / maze_size
         return rewards
 
     # we still need two runner to avoid one reset others' envs.
@@ -142,15 +143,13 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
                                   keys=get_store_keys(), reward_fn=reward_fn, her=her)
         else:
             buffer = Buffer(env=env, nsteps=nsteps, size=buffer_size, reward_fn=reward_fn, sample_goal_fn=sample_goal_fn,
-                            goal_shape=model.goal_shape)
+                            goal_shape=model.goal_shape, her=her)
     else:
         buffer = None
     acer = Acer(runner, model, buffer, log_interval,)
     acer.tstart = time.time()
 
     # === init to make sure we can get goal ===
-
-    replay_start = replay_start * env.num_envs / (env.num_envs + env_eval.num_envs)
     onpolicy_cnt = 0
 
     while acer.steps < total_timesteps:
