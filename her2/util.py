@@ -65,9 +65,11 @@ class Acer:
         runner = self.runner
 
         obs = results["obs"][:, :-1].copy()
-        next_obs = results["obs"][:, 1:].copy()
+        # next_obs = results["obs"][:, 1:].copy()
+        next_obs = results["next_obs"].copy()
         obs = obs.reshape((runner.nbatch, ) + runner.obs_shape)
         next_obs = next_obs.reshape((runner.nbatch, ) + runner.obs_shape)
+
         actions = results["actions"].reshape(runner.nbatch)
         rewards = results["rewards"].reshape(runner.nbatch)
         mus = results["mus"].reshape([runner.nbatch, runner.nact])

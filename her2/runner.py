@@ -39,7 +39,7 @@ class Runner(AbstractEnvRunner):
 
     def run(self):
         # enc_obs = np.split(self.obs, self.nstack, axis=3)  # so now list of obs steps
-        mb_obs, mb_actions, mb_mus, mb_dones, mb_rewards, mb_goals = [], [], [], [], [], [],
+        mb_obs, mb_next_obs, mb_actions, mb_mus, mb_dones, mb_rewards, mb_goals = [], [], [], [], [], [], [],
         episode_info = {}
         for _ in range(self.nsteps):
             actions, mus, states = self.model.step(self.obs, S=self.states, M=self.dones, goals=self.goals)
@@ -55,15 +55,26 @@ class Runner(AbstractEnvRunner):
                     self.episode_step[env_idx] = 0
                     self.episode[env_idx] += 1
                     episode_info["episode"] = infos[env_idx]["episode"]
+                    assert np.array_equal(obs[env_idx], np.array([0., 0.])), "next_obs:{}".format(obs[env_idx])
+                    next_obs_i = infos[env_idx].get("next_obs", None)
+                    assert next_obs_i is not None
+                    next_obs = obs.copy()
+                    next_obs[env_idx] = next_obs_i
+                    mb_next_obs.append(next_obs)
+                else:
+                    mb_next_obs.append(obs)
+                if rewards[env_idx] == 1.0:
+                    assert np.array_equal(obs[env_idx], np.array([0., 0.]))
             # states information for statefull models like LSTM
             self.states = states
             self.dones = dones
             self.obs = obs
             mb_rewards.append(rewards)
         mb_obs.append(np.copy(self.obs))
-        mb_dones.append(self.dones)
+        mb_dones.append(np.copy(self.dones))
 
         mb_obs = np.asarray(mb_obs, dtype=self.obs_dtype).swapaxes(1, 0)
+        mb_next_obs = np.asarray(mb_next_obs, dtype=self.obs_dtype).swapaxes(1, 0)
         mb_actions = np.asarray(mb_actions, dtype=self.ac_dtype).swapaxes(1, 0)
         mb_rewards = np.asarray(mb_rewards, dtype=np.float32).swapaxes(1, 0)
         mb_mus = np.asarray(mb_mus, dtype=np.float32).swapaxes(1, 0)
@@ -78,6 +89,7 @@ class Runner(AbstractEnvRunner):
 
         results = dict(
             obs=mb_obs,
+            next_obs=mb_next_obs,
             actions=mb_actions,
             rewards=mb_rewards,
             mus=mb_mus,

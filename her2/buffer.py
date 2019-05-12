@@ -118,9 +118,9 @@ class Buffer(object):
         if self.her:
             her_idx, future_idx = self.sample_goal_fn(dones)
             goal_obs[her_idx] = obs[:, 1:][future_idx]
-            new_rewards = self.reward_fn(obs[:, 1:], goal_obs, self.maze_size)
+            new_rewards = self.reward_fn(obs[:, 1:], dones, self.maze_size)
             results["rewards"] = new_rewards
-            self.her_gain = new_rewards - rewards
+            self.her_gain = np.mean(new_rewards) - np.mean(rewards)
         results["her_gain"] = self.her_gain
         results["goal_obs"] = goal_obs
 
