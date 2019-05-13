@@ -2,7 +2,7 @@ import numpy as np
 from copy import deepcopy
 
 
-def make_sample_her_transitions(replay_strategy, replay_k):
+def make_sample_her_transitions(replay_strategy, replay_k, replay_t=None):
     """Creates a sample function that can be used for HER experience replay.
 
     Args:
@@ -14,8 +14,9 @@ def make_sample_her_transitions(replay_strategy, replay_k):
     """
     if replay_strategy == 'future':
         future_p = 1 - (1. / (1 + replay_k))
-    else:  # 'replay_strategy' == 'none'
-        future_p = 0
+    elif replay_strategy == 'fixed':
+        future_p = 1 - (1. / (1 + replay_k))
+        future_t = replay_t
 
     def _sample_her_transitions(dones, max_length=None):
         """
@@ -35,7 +36,10 @@ def make_sample_her_transitions(replay_strategy, replay_k):
         # will be used for HER replay by substituting in future goals.
         her_indexes = np.where(np.random.uniform(size=[nenv, T]) < future_p)
         nb_her_sample = len(her_indexes[1])
-        offset_indexes = np.random.uniform(size=nb_her_sample) * (T - her_indexes[1])
+        if replay_strategy == 'future':
+            offset_indexes = np.random.uniform(size=nb_her_sample) * (T - her_indexes[1])
+        else:
+            offset_indexes = np.minimum(her_indexes[1] + future_t, T-1)
         max_future_indexes = np.empty(shape=[nenv, T], dtype=np.int32)
         max_future_indexes.fill(T-1)
         for i in range(nenv):
