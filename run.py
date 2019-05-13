@@ -58,7 +58,7 @@ def train(args, extra_args):
     seed = args.seed
 
     learn = get_learn_function(args.alg)
-    alg_kwargs = get_learn_function_defaults(args.alg, env_type)
+    alg_kwargs = get_learn_function_defaults(args.alg, env_type, env_id)
     alg_kwargs.update(extra_args)
 
     env = build_env(env_id=args.env, num_env=args.num_env, reward_scale=args.reward_scale, env_type=args.env_type,
@@ -148,10 +148,10 @@ def get_learn_function(alg):
     return get_alg_module(alg).learn
 
 
-def get_learn_function_defaults(alg, env_type):
+def get_learn_function_defaults(alg, env_type, env_id):
     try:
         alg_defaults = get_alg_module(alg, 'defaults')
-        kwargs = getattr(alg_defaults, env_type)()
+        kwargs = getattr(alg_defaults, env_type)(env_id)
     except (ImportError, AttributeError):
         kwargs = {}
     return kwargs
