@@ -1,7 +1,7 @@
 import functools
 import tensorflow as tf
 from baselines import logger
-from baselines.common.tf_util import get_session, save_variables
+from baselines.common.tf_util import get_session, save_variables, load_variables
 from baselines.a2c.utils import batch_to_seq, seq_to_batch
 from baselines.a2c.utils import cat_entropy_softmax
 from baselines.a2c.utils import Scheduler, find_trainable_variables
@@ -57,7 +57,7 @@ def q_retrace(R, D, q_i, v, rho_i, nenvs, nsteps, gamma):
 class Model(object):
     def __init__(self, sess, policy, ob_space, ac_space, nenvs, nsteps, ent_coef, q_coef, gamma,
                  max_grad_norm, lr, rprop_alpha, rprop_epsilon, total_timesteps, lrschedule, c, trust_region,
-                 alpha, delta, scope,  goal_shape):
+                 alpha, delta, scope, load_path, goal_shape):
         self.sess = sess
         self.nenv = nenvs
         self.nsteps = nsteps
@@ -212,6 +212,7 @@ class Model(object):
             grads, norm_grads = tf.clip_by_global_norm(grads, max_grad_norm)
         grads = list(zip(grads, params))
         trainer = tf.train.RMSPropOptimizer(learning_rate=self.LR, decay=rprop_alpha, epsilon=rprop_epsilon)
+        # trainer = tf.train.AdamOptimizer(learning_rate=self.LR)
         _policy_opt_op = trainer.apply_gradients(grads)
 
         # so when you call _train, you first do the gradient step, then you apply ema
@@ -234,9 +235,15 @@ class Model(object):
         self.names_ops_policy = [scope + "_" + x for x in self.names_ops_policy]  # scope as prefix
 
         self.save = functools.partial(save_variables, sess=self.sess, variables=params)
+        self.load = functools.partial(load_variables, sess=self.sess, variables=params)
 
         self.initial_state = self.step_model.initial_state
-        tf.global_variables_initializer().run(session=self.sess)
+        if load_path is not None:
+            tf.global_variables_initializer().run(session=self.sess)
+            logger.info("loading pretrained model from {}".format(load_path))
+            self.load(load_path)
+        else:
+            tf.global_variables_initializer().run(session=self.sess)
 
     def train_policy(self, obs, next_obs, actions, rewards, dones, mus, states, masks, steps, goal_obs, verbose=False):
         cur_lr = self.lr.value_steps(steps)

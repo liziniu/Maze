@@ -37,12 +37,14 @@ class Runner(AbstractEnvRunner):
         self.episode_step = np.zeros(self.nenv, dtype=np.int32)
         self.episode = np.zeros(self.nenv, dtype=np.int32)
 
-    def run(self):
+    def run(self, debug=False):
         # enc_obs = np.split(self.obs, self.nstack, axis=3)  # so now list of obs steps
         mb_obs, mb_next_obs, mb_actions, mb_mus, mb_dones, mb_rewards, mb_goals = [], [], [], [], [], [], [],
         episode_info = {}
         for _ in range(self.nsteps):
             actions, mus, states = self.model.step(self.obs, S=self.states, M=self.dones, goals=self.goals)
+            if debug:
+                self.env.render()
             mb_obs.append(np.copy(self.obs))
             mb_actions.append(actions)
             mb_mus.append(mus)
