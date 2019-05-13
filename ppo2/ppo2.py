@@ -76,8 +76,9 @@ def learn(*, network, env, total_timesteps, env_eval=None, seed=None, nsteps=204
 
 
     '''
-
-    set_global_seeds(seed)
+    logger.info("Running ppo2 with following kwargs")
+    logger.info(locals())
+    logger.info("\n")
 
     if isinstance(lr, float): lr = constfn(lr)
     else: assert callable(lr)
