@@ -37,7 +37,7 @@ class Runner(AbstractEnvRunner):
         logger.info("-"*50)
 
         self.controller = MetaController(self.maze_shape)
-        self.allowed_step = np.array([self.controller.initial_step() for _ in range(self.nenv)])
+        self.allowed_step = np.array([np.prod(self.maze_shape)*10 for _ in range(self.nenv)])
         self.desired_goal = np.array([self.desired_pos for _ in range(self.nenv)])
         self.goal_infos = [{} for _ in range(self.nenv)]
         self.goals = np.array([self.controller.initial_goal() for _ in range(self.nenv)])
@@ -80,27 +80,30 @@ class Runner(AbstractEnvRunner):
                 real_done = np.copy(dones[env_idx])
                 if not self.aux_dones[env_idx]:
                     # check whether aux_goal done
-                    if np.array_equal(next_obs[env_idx], self.goals[env_idx]):
-                        dones[env_idx] = True
-                        self.controller.update(self.goals[env_idx], next_obs[env_idx], acer_step / self.total_steps)
-                        self.aux_dones[env_idx] = True
-                        self.aux_step[env_idx] = self.episode_step[env_idx]
-                        rewards[env_idx] = 1.0
-                        episode_info["aux_info"] = dict(aux_x=self.goals[env_idx][0],
-                                                        aux_y=self.goals[env_idx][1],
-                                                        succ=True,
-                                                        real_step=self.aux_step[env_idx])
-                        self.mem = "aux_succ:True, real_step:{}".format(self.aux_step[env_idx])
-                        self.goals[env_idx] = self.desired_goal[env_idx]
+                    if self.episode_step[env_idx] < self.allowed_step[env_idx]:
+                        if np.array_equal(next_obs[env_idx], self.goals[env_idx]):
+                            dones[env_idx] = True
+                            self.controller.update(self.goals[env_idx], next_obs[env_idx], acer_step / self.total_steps)
+                            self.aux_dones[env_idx] = True
+                            self.aux_step[env_idx] = self.episode_step[env_idx]
+                            rewards[env_idx] = 1.0
+                            episode_info["aux_info"] = dict(aux_x=self.goals[env_idx][0],
+                                                            aux_y=self.goals[env_idx][1],
+                                                            succ=True)
+                            self.mem = "aux_succ:True, real_step:{}".format(self.aux_step[env_idx])
+                            self.goals[env_idx] = self.desired_goal[env_idx]
+                        else:
+                            rewards[:] = -0.1 / np.prod(self.maze_shape)   # avoid meet the desired goal by chance.
                     else:
-                        rewards[:] = -0.1 / np.prod(self.maze_shape)   # avoid meet the desired goal by chance.
+                        if self.episode_step[env_idx] == self.allowed_step[env_idx]:
+                            self.goals[env_idx] = self.desired_goal[env_idx]
+                            self.controller.update(self.goals[env_idx], next_obs[env_idx], acer_step / self.total_steps)
+                            self.aux_step[env_idx] = self.episode_step[env_idx]
+                            self.mem = "aux_succ:False, real_step:{}".format(self.episode_step[env_idx])
+                            episode_info["aux_info"] = dict(aux_x=self.aux_goal[0],
+                                                            aux_y=self.aux_goal[1],
+                                                            succ=False)
                 if real_done:
-                    if not self.aux_dones[env_idx]:
-                        self.mem = "aux_succ:False, real_step:{}".format(self.episode_step[env_idx])
-                        episode_info["aux_info"] = dict(aux_x=self.aux_goal[0],
-                                                        aux_y=self.aux_goal[1],
-                                                        succ=False,
-                                                        real_step=self.episode_step[env_idx])
                     logger.info("aux_goals:{}, final:{}, {}".format(self.aux_goal, next_obs[env_idx], self.mem))
                     self.aux_dones[env_idx] = False
                     self.aux_step[env_idx] = 0

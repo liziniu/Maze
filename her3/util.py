@@ -17,8 +17,7 @@ class Acer:
         self.buffer = buffer
         self.log_interval = log_interval
         self.tstart = None
-        self.keys = ["episode_return", "episode_length",  "rewards", "aux_x", "aux_y", "aux_succ_ratio",
-                     "real_step"]
+        self.keys = ["episode_return", "episode_length",  "rewards", "aux_x", "aux_y", "aux_succ_ratio"]
         self.episode_stats = EpisodeStats(maxlen=10, keys=self.keys)
         self.steps = 0
         self.save_interval = self.runner.save_interval
@@ -89,7 +88,6 @@ class Acer:
             self.episode_stats.feed(aux_info["aux_x"], "aux_x")
             self.episode_stats.feed(aux_info["aux_y"], "aux_y")
             self.episode_stats.feed(aux_info["succ"], "aux_succ_ratio")
-            self.episode_stats.feed(aux_info["real_step"], "real_step")
 
     def log(self, names_ops, values_ops):
         logger.record_tabular("total_timesteps", self.steps)
