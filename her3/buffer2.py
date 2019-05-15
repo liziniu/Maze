@@ -17,7 +17,7 @@ def check_reward_fn(next_obs, dones, maze_size):
 
 
 class ReplayBuffer:
-    def __init__(self, env, reward_fn, nsteps, size, keys):
+    def __init__(self, env, sample_goal_fn, reward_fn, nsteps, size, keys, her):
         """Creates a replay buffer.
 
         Args:
@@ -28,6 +28,7 @@ class ReplayBuffer:
         nenv = self.nenv = env.num_envs
         self.nsteps = nsteps
         self.size = size // self.nsteps
+        self.sample_goal_fn = sample_goal_fn
         self.reward_fn = reward_fn
 
         self.obs_dtype = env.observation_space.dtype
@@ -38,6 +39,8 @@ class ReplayBuffer:
         self.buffers = [{key: None for key in keys} for _ in range(nenv)]
         self._cache = [{} for _ in range(self.nenv)]
 
+        self.her = her
+        self.her_gain = 0.
         self.maze_size = np.prod([int(x) for x in env.spec.id.split("-")[2].split("x")])
 
         # memory management
@@ -66,13 +69,15 @@ class ReplayBuffer:
                         cache[i][key] = self.buffers[i][key][start*(self.nsteps+1):end*(self.nsteps+1)].copy()
                     else:
                         cache[i][key] = self.buffers[i][key][start*self.nsteps:end*self.nsteps].copy()
-                # check rewards
+            if self.her:
                 for i in range(self.nenv):
+                    dones = cache[i]["dones"]
+                    her_index, future_index = self.sample_goal_fn(dones)
                     rewards = self.reward_fn(cache[i]["next_obs"][None, :], cache[i]["goal_obs"][None, :], self.maze_size)
                     rewards = rewards.flatten()
                     error = np.sum(np.abs(cache[i]["rewards"] - rewards))
-                    if error > 1e-6:
-                        raise ValueError("error:{}".format(error))
+                    assert error < 1e-6, "error:{}".format(error)
+                    cache[i]["goal_obs"][her_index] = cache[i]["next_obs"][future_index]
             self._cache = cache.copy()
         else:
             cache = self._cache.copy()
@@ -90,6 +95,13 @@ class ReplayBuffer:
 
         for key in self.keys:
             samples[key] = np.asarray(samples[key])
+        if self.her:
+            rewards = np.mean(samples["rewards"])
+            new_rewards = self.reward_fn(samples["next_obs"], samples["goal_obs"], self.maze_size)
+            new_done_index = np.where(new_rewards.astype(int))
+            samples["dones"][new_done_index] = True
+            samples["her_gain"] = new_rewards - rewards
+            samples["rewards"] = new_rewards
         return samples
 
     def put(self, episode_batch):
