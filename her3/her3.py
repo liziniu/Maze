@@ -17,7 +17,7 @@ from her3.defaults import get_store_keys
 def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
           max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,
           log_interval=200, buffer_size=50000, replay_ratio=4, replay_start=10000, c=10.0, trust_region=True,
-          alpha=0.99, delta=1, replay_k=1, env_eval=None, eval_interval=300, save_model=False,
+          alpha=0.99, delta=1, replay_k=1, env_eval=None, eval_interval=300, save_model=False, her=False,
           goal_shape=(2,), nb_train_epoch=4, save_interval=0, load_path=None, **network_kwargs):
 
     '''
@@ -124,8 +124,9 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
 
     if replay_ratio > 0:
         assert env.num_envs == env_eval.num_envs
+        her_sample_fn = make_sample_her_transitions("future", replay_k)
         buffer = ReplayBuffer(env=env, nsteps=nsteps, size=buffer_size, keys=get_store_keys(),
-                              reward_fn=reward_fn)
+                              reward_fn=reward_fn, sample_goal_fn=her_sample_fn, her=her)
     else:
         buffer = None
     acer = Acer(runner, model, buffer, log_interval,)
