@@ -17,6 +17,8 @@ def make_sample_her_transitions(replay_strategy, replay_k, replay_t=None):
     elif replay_strategy == 'fixed':
         future_p = 1 - (1. / (1 + replay_k))
         future_t = replay_t
+    else:
+        raise NotImplementedError
 
     def _sample_her_transitions(dones, max_length=None):
         """
@@ -38,18 +40,17 @@ def make_sample_her_transitions(replay_strategy, replay_k, replay_t=None):
         nb_her_sample = len(her_indexes[1])
         if replay_strategy == 'future':
             offset_indexes = np.random.uniform(size=nb_her_sample) * (T - her_indexes[1])
-        else:
+        elif replay_strategy == 'fixed':
             offset_indexes = np.minimum(her_indexes[1] + future_t, T-1)
         max_future_indexes = np.empty(shape=[nenv, T], dtype=np.int32)
         max_future_indexes.fill(T-1)
         for i in range(nenv):
-            done_index = np.where(dones[i][:T])[0]
+            done_index = np.where(dones[i])[0]
             start = 0
             for idx in done_index:
-                end = idx
-                # max_future_indexes[i][start:end] = idx - 1  # we cannot choose done's next_state
+                end = idx + 1
                 max_future_indexes[i][start:end] = idx
-                start = idx
+                start = end
         max_future_indexes = max_future_indexes[her_indexes]  # downsample
         future_indexes = offset_indexes.astype(int) + her_indexes[1]
         future_indexes = np.minimum(future_indexes, max_future_indexes)

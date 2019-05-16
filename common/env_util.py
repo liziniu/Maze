@@ -277,6 +277,7 @@ def make_maze(env_id, max_episode_steps):
     env = gym.make(env_id)
     grid = env_id.split("-")[2]
     size = np.prod([int(x) for x in grid.split("x")])
-    max_episode_steps = max_episode_steps or size ** 2
-    env = TimeLimit(env, max_episode_steps)
+    if size == 100:
+        max_episode_steps = 10000
+        env = TimeLimit(env, max_episode_steps)
     return env

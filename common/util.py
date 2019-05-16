@@ -136,13 +136,13 @@ class EpisodeStats:
 
     def get_mean(self, key):
         if self.episode_stats[key]:
-            return np.round(np.mean(self.episode_stats[key]), 4)
+            return np.round(np.mean(self.episode_stats[key]), 6)
         else:
             return 0.
 
     def get_sum(self, key):
         if self.episode_stats[key]:
-            return np.round(np.sum(self.episode_stats[key]), 4)
+            return np.round(np.sum(self.episode_stats[key]), 6)
         else:
             return 0.
 
