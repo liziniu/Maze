@@ -56,7 +56,7 @@ class ReplayBuffer:
             cache = [{} for _ in range(self.nenv)]
             for i in range(self.nenv):
                 if downsample:
-                    interval = 20     # 20 sub-trajectories
+                    interval = 100     # 20 sub-trajectories
                     if self.current_size < interval:
                         start, end = 0, self.current_size
                     else:

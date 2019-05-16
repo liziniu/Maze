@@ -14,8 +14,7 @@ class MetaController:
                 self.t[i][j] = deque(maxlen=5)
         self.desired_pos = np.array(maze_shape) - 1
         self.version = 2
-        if self.version == 1:
-            self.p[:] = np.sum(self.maze_shape)
+        self.p[:] = np.sum(self.maze_shape)
 
     def step_goal(self):
         if self.version == 1:
@@ -39,7 +38,7 @@ class MetaController:
         if self.version == 1:
             bonus = np.sum(f)
         else:
-            bonus = np.sum(self.desired_pos - f)
+            bonus = np.sum(np.abs(g - self.desired_pos)) + np.sum(np.abs(g - f))
         self.p[g[0], g[1]] = self.p[g[0], g[1]] * (1-alpha) + alpha * bonus
 
     def initial_goal(self):

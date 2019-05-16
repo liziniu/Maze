@@ -38,6 +38,7 @@ class Runner(AbstractEnvRunner):
 
         self.controller = MetaController(self.maze_shape)
         self.allowed_step = np.array([np.prod(self.maze_shape)*10 for _ in range(self.nenv)])
+        self.allowed_step = np.array([np.inf for _ in range(self.nenv)])
         self.desired_goal = np.array([self.desired_pos for _ in range(self.nenv)])
         self.goal_infos = [{} for _ in range(self.nenv)]
         self.goals = np.array([self.controller.initial_goal() for _ in range(self.nenv)])
@@ -49,6 +50,8 @@ class Runner(AbstractEnvRunner):
         self.aux_step = np.zeros(self.nenv, dtype=np.int32)
         self.aux_dones = np.empty(self.nenv, dtype=bool)
         self.aux_dones.fill(False)
+
+        self.greedy_explore = True
 
     def run(self, acer_step=None, debug=False):
         # enc_obs = np.split(self.obs, self.nstack, axis=3)  # so now list of obs steps
@@ -138,7 +141,10 @@ class Runner(AbstractEnvRunner):
             raise ValueError
         for i in range(self.nsteps):
             if np.array_equal(mb_goals[0][i], mb_next_obs[0][i]):
-                assert mb_rewards[0][i] == 1.0
+                if mb_rewards[0][i] != 1.0:
+                    raise ValueError("mb_goals:{}, mb_next_obs:{}, mb_rewards:{} should be 1.0".format(
+                        mb_goals[0][i], mb_next_obs[0][i], mb_rewards[0][i]
+                    ))
             else:
                 if mb_rewards[0][i] + 0.1 / np.prod(self.maze_shape) > 1e-6:
                     raise ValueError("error:{}, index:{}, reward:{}".format(
