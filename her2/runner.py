@@ -6,6 +6,7 @@ from baselines import logger
 from common.util import DataRecorder
 import os
 from copy import deepcopy
+from her3.meta_controller import arr_to_one_hot
 
 
 class Runner(AbstractEnvRunner):
@@ -23,12 +24,13 @@ class Runner(AbstractEnvRunner):
         self.obs_dtype = env.observation_space.dtype
         self.obs_shape = env.observation_space.shape
         self.ac_dtype = env.action_space.dtype
-        
+
         self.recoder = DataRecorder(os.path.join(logger.get_dir(), "runner_data"))
         self.save_interval = save_interval
 
         self.size = [int(x) for x in self.env.spec.id.split("-")[2].split("x")]
         self.desired_pos = np.asarray(self.size) - 1
+        self.ncat = self.size[0]
         logger.info("-"*50)
         logger.info("-"*15, "desired_pos:", self.desired_pos, "-"*15)
         logger.info("-"*50)
@@ -57,7 +59,7 @@ class Runner(AbstractEnvRunner):
                     self.episode_step[env_idx] = 0
                     self.episode[env_idx] += 1
                     episode_info["episode"] = infos[env_idx]["episode"]
-                    assert np.array_equal(obs[env_idx], np.array([0., 0.])), "next_obs:{}".format(obs[env_idx])
+                    assert np.array_equal(obs[env_idx], arr_to_one_hot(np.array([0., 0.]), self.ncat)), "next_obs:{}".format(obs[env_idx])
                     next_obs_i = infos[env_idx].get("next_obs", None)
                     assert next_obs_i is not None
                     next_obs = obs.copy()
@@ -66,7 +68,7 @@ class Runner(AbstractEnvRunner):
                 else:
                     mb_next_obs.append(obs)
                 if rewards[env_idx] == 1.0:
-                    assert np.array_equal(obs[env_idx], np.array([0., 0.]))
+                    assert np.array_equal(obs[env_idx], arr_to_one_hot(np.array([0., 0.]), self.ncat))
             # states information for statefull models like LSTM
             self.states = states
             self.dones = dones
@@ -103,7 +105,7 @@ class Runner(AbstractEnvRunner):
         return results
 
     def get_goal(self, nb_goal):
-        return np.array([self.desired_pos for _ in range(nb_goal)]), [{} for _ in range(nb_goal)]
+        return np.array([arr_to_one_hot(self.desired_pos, self.ncat) for _ in range(nb_goal)]), [{} for _ in range(nb_goal)]
 
     def initialize(self):
         pass

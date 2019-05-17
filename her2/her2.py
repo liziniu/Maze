@@ -19,7 +19,7 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
           max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,
           log_interval=100, buffer_size=50000, replay_ratio=4, replay_start=10000, c=10.0, trust_region=True,
           alpha=0.99, delta=1, replay_k=1, env_eval=None, eval_interval=300, save_model=False, revise_done=True,
-          goal_shape=(2,), nb_train_epoch=4, her=True, buffer2=True, save_interval=0, load_path=None, **network_kwargs):
+          goal_shape=None, nb_train_epoch=4, her=True, buffer2=True, save_interval=0, load_path=None, **network_kwargs):
 
     '''
     Main entrypoint for ACER (Actor-Critic with Experience Replay) algorithm (https://arxiv.org/pdf/1611.01224.pdf)
@@ -104,7 +104,8 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
     ac_space = env.action_space
 
     sess = get_session()
-
+    if goal_shape is None:
+        goal_shape = env.observation_space.shape
     model = Model(
         sess=sess, policy=policy, ob_space=ob_space, ac_space=ac_space, nenvs=nenvs, nsteps=nsteps, ent_coef=ent_coef,
         q_coef=q_coef, gamma=gamma, max_grad_norm=max_grad_norm, lr=lr, rprop_alpha=rprop_alpha,
