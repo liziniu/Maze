@@ -18,6 +18,7 @@ class Acer:
         self.log_interval = log_interval
         self.tstart = None
         self.keys = ["episode_return", "episode_length",  "rewards", "aux_x", "aux_y", "aux_succ_ratio"]
+        self.keys += ["tar_ent", "aux_ent"]
         self.episode_stats = EpisodeStats(maxlen=10, keys=self.keys)
         self.steps = 0
         self.save_interval = self.runner.save_interval
@@ -33,9 +34,9 @@ class Acer:
         buffer.put(results)
 
         self.record_episode_info(results["episode_info"])
-        obs, next_obs, actions, rewards, mus, dones, masks, goal_obs = self.adjust_shape(results)
+        obs, next_obs, actions, rewards, mus, dones, masks, goal_obs, aux = self.adjust_shape(results)
         names_ops, values_ops = model.train_policy(
-            obs, next_obs, actions, rewards, dones, mus, model.initial_state, masks, steps, goal_obs)
+            obs, next_obs, actions, rewards, dones, mus, model.initial_state, masks, steps, goal_obs, aux)
 
         self.episode_stats.feed(np.mean(rewards), "rewards")
         if buffer.has_atleast(replay_start):
@@ -44,9 +45,9 @@ class Acer:
                     results = buffer.get(use_cache=False)
                 else:
                     results = buffer.get(use_cache=True)
-                obs, next_obs, actions, rewards, mus, dones, masks, goal_obs = self.adjust_shape(results)
+                obs, next_obs, actions, rewards, mus, dones, masks, goal_obs, aux = self.adjust_shape(results)
                 names_ops, values_ops = model.train_policy(
-                    obs, next_obs, actions, rewards, dones, mus, model.initial_state, masks, steps, goal_obs)
+                    obs, next_obs, actions, rewards, dones, mus, model.initial_state, masks, steps, goal_obs, aux)
                 self.episode_stats.feed(np.mean(rewards), "rewards")
 
         if int(steps/runner.nbatch) % self.log_interval == 0:
@@ -76,7 +77,8 @@ class Acer:
         dones = results["dones"].reshape([runner.nbatch])
         masks = results["masks"].reshape([runner.batch_ob_shape[0]])
         goal_obs = results["goal_obs"].reshape((runner.nbatch, ) + runner.obs_shape)
-        return obs, next_obs, actions, rewards, mus, dones, masks, goal_obs
+        aux = results["aux"].reshape(runner.nbatch)
+        return obs, next_obs, actions, rewards, mus, dones, masks, goal_obs, aux
 
     def record_episode_info(self, episode_info):
         returns = episode_info.get("episode", None)
@@ -88,6 +90,12 @@ class Acer:
             self.episode_stats.feed(aux_info["aux_x"], "aux_x")
             self.episode_stats.feed(aux_info["aux_y"], "aux_y")
             self.episode_stats.feed(aux_info["succ"], "aux_succ_ratio")
+        ent_info = episode_info.get("ent_info", None)
+        if ent_info:
+            self.episode_stats.feed(ent_info["aux_ent"], "aux_ent")
+            tar_ent = ent_info["tar_ent"]
+            if tar_ent > 0:
+                self.episode_stats.feed(ent_info["tar_ent"], "tar_ent")
 
     def log(self, names_ops, values_ops):
         logger.record_tabular("total_timesteps", self.steps)

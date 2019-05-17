@@ -273,11 +273,76 @@ class VecFrameStack(VecEnvWrapper):
         return self.stackedobs
 
 
+class MazeObservationSpace(gym.Space):
+    """
+    {0,...,1,...,0}
+
+    Example usage:
+    self.observation_space = OneHotEncoding(size=4)
+    """
+    def __init__(self, size=None):
+        assert len(size) == 2 and size[0] == size[1]
+        self.size = size[0]
+        gym.Space.__init__(self, (), np.int64)
+        self.dtype = np.dtype(np.int64)
+        self.shape = (len(size), size[0])
+        self.ndim = len(size)
+
+    def sample(self):
+        one_hot_vector = np.zeros(self.shape)
+        one_hot_vector[np.random.randint(0, self.size, self.ndim)] = 1
+        return one_hot_vector
+
+    def contains(self, x):
+        if isinstance(x, (list, tuple, np.ndarray)):
+            if len(x) != self.ndim:
+                return False
+            else:
+                return True
+        else:
+            return False
+
+    def __repr__(self):
+        return "OneHotEncoding(%d)" % self.size
+
+    def __eq__(self, other):
+        return self.size == other.size
+
+
+class MazeWrapper(gym.core.Wrapper):
+    def __init__(self, env):
+        gym.core.Wrapper.__init__(self, env)
+        self.observation_space = MazeObservationSpace(env.unwrapped.maze_size)
+
+    def step(self, action):
+        if hasattr(self, "_step"):
+            self.step = self._step
+            obs, reward, done, info = self.step(action)
+        else:
+            obs, reward, done, info = self.env.step(action)
+        _obs = np.zeros(self.observation_space.shape, dtype=self.observation_space.dtype)
+        index = (np.arange(self.observation_space.ndim), obs.astype(int))
+        _obs[index] = 1
+        return _obs, reward, done, info
+
+    def reset(self, **kwargs):
+        obs = self.env.reset(**kwargs)
+        _obs = np.zeros(self.observation_space.shape, dtype=self.observation_space.dtype)
+        index = (np.arange(self.observation_space.ndim), obs.astype(int))
+        _obs[index] = 1
+        return _obs
+
+
 def make_maze(env_id, max_episode_steps):
     env = gym.make(env_id)
     grid = env_id.split("-")[2]
     size = np.prod([int(x) for x in grid.split("x")])
     if size == 100:
-        max_episode_steps = 10000
+        max_episode_steps = 3000
         env = TimeLimit(env, max_episode_steps)
-    return env
+    return MazeWrapper(env)
+
+if __name__ == "__main__":
+    import gym_maze
+    env = make_maze("maze-sample-10x10-v0", None)
+    print(env.observation_space.shape)

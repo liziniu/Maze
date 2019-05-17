@@ -74,6 +74,7 @@ class Model(object):
             self.R = tf.placeholder(tf.float32, [nbatch], name="rewards")  # rewards, not returns
             self.MU = tf.placeholder(tf.float32, [nbatch, nact], name="mus")  # mu's
             self.LR = tf.placeholder(tf.float32, [], name="lr")
+            self.AUX = tf.placeholder(tf.float32, [nbatch], name="aux")
 
             self.V_NEXT = tf.placeholder(tf.float32, [nbatch], name="value_next")  # (by lzn: we revise goal-conditioned next value)
 
@@ -146,7 +147,8 @@ class Model(object):
         # Calculate losses
         # Entropy
         # entropy = tf.reduce_mean(strip(self.train_model.pd.entropy(), nenvs, nsteps))
-        entropy = tf.reduce_mean(cat_entropy_softmax(f))
+
+        entropy = tf.reduce_mean(self.AUX * cat_entropy_softmax(f))
 
         # Policy Graident loss, with truncated importance sampling & bias correction
         v = strip(v, nenvs, nsteps, True)  # (todo by lzn: we do not need the strip the last one)
@@ -245,7 +247,8 @@ class Model(object):
         else:
             tf.global_variables_initializer().run(session=self.sess)
 
-    def train_policy(self, obs, next_obs, actions, rewards, dones, mus, states, masks, steps, goal_obs, verbose=False):
+    def train_policy(self, obs, next_obs, actions, rewards, dones, mus, states, masks, steps, goal_obs, aux,
+                     verbose=False):
         cur_lr = self.lr.value_steps(steps)
         # 1. calculate v_{t+1} using obs_{t+1} and g_t
         td_map = {self.train_model.X: next_obs}
@@ -254,7 +257,7 @@ class Model(object):
         v_next = self.sess.run(self.v, feed_dict=td_map)
         # 2. use obs_t, goal_t, v_{t+1} to train policy
         td_map = {self.train_model.X: obs, self.polyak_model.X: obs, self.A: actions, self.R: rewards, self.D: dones,
-                  self.MU: mus, self.LR: cur_lr, self.V_NEXT: v_next}
+                  self.MU: mus, self.LR: cur_lr, self.V_NEXT: v_next, self.AUX: aux}
 
         ##########################################
         debug = False
