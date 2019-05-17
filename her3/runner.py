@@ -15,7 +15,7 @@ def get_entropy(mu):
 
 class Runner(AbstractEnvRunner):
 
-    def __init__(self, env, model, nsteps, total_steps, save_interval):
+    def __init__(self, env, model, nsteps, total_steps, save_interval, her):
         super().__init__(env=env, model=model, nsteps=nsteps)
         assert isinstance(env.action_space, spaces.Discrete), 'This ACER implementation works only with discrete action spaces!'
 
@@ -39,6 +39,8 @@ class Runner(AbstractEnvRunner):
         logger.info("-"*50)
         logger.info("-"*15, "desired_pos:", self.desired_pos, "-"*15)
         logger.info("-"*50)
+
+        self.her = her
 
         assert self.nenv == 1
         self.controller = MetaController(self.maze_shape, env.observation_space.shape, env.observation_space.dtype)
@@ -77,7 +79,10 @@ class Runner(AbstractEnvRunner):
             mb_mus.append(mus)
             mb_masks.append(self.dones)
             mb_goals.append(np.copy(self.goals))
-            mb_aux.append(np.copy(self.aux_dones))
+            # if not self.her:
+            #     mb_aux.append(np.copy(self.aux_dones))
+            # else:
+            mb_aux.append([True])
             obs, rewards, dones, infos = self.env.step(actions)
             self.episode_step += 1
             for env_idx in range(self.nenv):

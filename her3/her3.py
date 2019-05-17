@@ -122,7 +122,7 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
         return rewards
 
     # we still need two runner to avoid one reset others' envs.
-    runner = Runner(env=env, model=model, nsteps=nsteps, save_interval=save_interval, total_steps=total_timesteps)
+    runner = Runner(env=env, model=model, nsteps=nsteps, save_interval=save_interval, total_steps=total_timesteps, her=her)
 
     if replay_ratio > 0:
         assert env.num_envs == env_eval.num_envs

@@ -7,7 +7,7 @@ def arr_to_one_hot(arr, ncat):
     dtype = arr.dtype
     n = len(arr)
     _arr = np.zeros([n, ncat], dtype=dtype)
-    index = (np.arange(n), arr)
+    index = (np.arange(n), arr.astype(int))
     _arr[index] = 1
     return _arr
 
@@ -16,6 +16,13 @@ def one_hot_to_arr(arr):
     index = np.where(arr)[1]
     _arr = np.array(index, dtype=arr.dtype)
     return _arr
+
+def safe_mean(x):
+    if len(x) == 0:
+        return 0.
+    else:
+        return np.mean(x)
+
 
 
 class MetaController:
@@ -36,8 +43,19 @@ class MetaController:
         if self.version == 1:
             self.p[:] = np.sum(self.maze_shape)
         else:
-            self.p = np.arange(0, self.maze_size).reshape(self.maze_shape)/self.maze_size
+            self.p = np.arange(0, self.maze_size).reshape(self.maze_shape)
+            self.p = self.p / np.mean(self.p)
             self.p = self.p.astype(np.float32)
+
+        self.possible_g = [arr_to_one_hot(np.array([0, 4]), self.ncat),
+                           arr_to_one_hot(np.array([3, 8]), self.ncat),
+                           arr_to_one_hot(np.array([3, 3]), self.ncat),
+                           arr_to_one_hot(np.array([4, 0]), self.ncat),
+                           arr_to_one_hot(np.array([9, 4]), self.ncat),
+                           arr_to_one_hot(np.array([7, 8]), self.ncat),
+                           arr_to_one_hot(np.array([9, 9]), self.ncat)]
+        self.pointer = 0
+        self.achieved_cnt = deque(maxlen=10)
 
     def step_goal(self):
         if self.version == 1:
@@ -55,6 +73,12 @@ class MetaController:
         # goal = np.array([4, 3])
         goal = np.array(goal)
         goal = arr_to_one_hot(goal, ncat=self.ncat)
+
+        if safe_mean(self.achieved_cnt) > 0.7:
+            self.pointer += 1
+            self.pointer = min(self.pointer, len(self.possible_g)-1)
+            self.achieved_cnt = deque(maxlen=10)
+        goal = self.possible_g[self.pointer]
         return goal
 
     def update(self, goal, final, t, alpha, beta=1.0):
@@ -71,6 +95,8 @@ class MetaController:
             bonus = dist + error + time
             # bonus = np.clip(bonus, 0.001, 2.0)
         self.p[g[0], g[1]] = self.p[g[0], g[1]] * (1-alpha) + alpha * bonus
+
+        self.achieved_cnt.append(np.array_equal(g, f))
 
     def sample_goal(self):
         goal = np.zeros(self.goal_shape, dtype=self.goal_dtype)
