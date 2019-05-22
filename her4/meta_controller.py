@@ -52,7 +52,8 @@ class MetaController:
                            arr_to_one_hot(np.array([4, 0]), self.ncat),
                            arr_to_one_hot(np.array([9, 4]), self.ncat),
                            arr_to_one_hot(np.array([7, 8]), self.ncat),
-                           arr_to_one_hot(np.array([9, 9]), self.ncat)]
+                           # arr_to_one_hot(np.array([9, 9]), self.ncat)
+                           ]
         self.pointer = 0
         self.achieved_cnt = deque(maxlen=10)
 
@@ -76,7 +77,7 @@ class MetaController:
         goal = np.array(goal)
         goal = arr_to_one_hot(goal, ncat=self.ncat)
 
-        if safe_mean(self.achieved_cnt) > 0.7:
+        if safe_mean(self.achieved_cnt) > 0.7 and len(self.achieved_cnt) == 10:
             self.pointer += 1
             self.pointer = min(self.pointer, len(self.possible_g)-1)
             self.achieved_cnt = deque(maxlen=10)

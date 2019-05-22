@@ -1,12 +1,10 @@
 import numpy as np
 from baselines.common.runners import AbstractEnvRunner
 from gym import spaces
-import pickle
 from baselines import logger
 from common.util import DataRecorder
 import os
-from copy import deepcopy
-from her3.meta_controller import MetaController, one_hot_to_arr
+from her4.meta_controller import MetaController, one_hot_to_arr, arr_to_one_hot
 
 
 def get_entropy(mu):
@@ -35,7 +33,7 @@ class Runner(AbstractEnvRunner):
         self.total_steps = total_steps
 
         self.maze_shape = [int(x) for x in self.env.spec.id.split("-")[2].split("x")]
-        self.desired_pos = np.asarray(self.maze_shape) - 1
+        self.desired_pos = arr_to_one_hot(np.asarray(self.maze_shape) - 1, ncat=self.maze_shape[0])
         logger.info("-"*50)
         logger.info("-"*15, "desired_pos:", self.desired_pos, "-"*15)
         logger.info("-"*50)
@@ -46,7 +44,6 @@ class Runner(AbstractEnvRunner):
         self.controller = MetaController(self.maze_shape, env.observation_space.shape, env.observation_space.dtype)
         self.allowed_step = [np.prod(self.maze_shape)*10]
         self.allowed_step = [np.inf]
-        self.desired_goal = np.array([self.controller.desired_pos])
         self.goal_infos = [{}]
         self.goals = np.array([self.controller.sample_goal()])
         self.aux_goal = np.copy(self.goals[0])
@@ -78,54 +75,50 @@ class Runner(AbstractEnvRunner):
             mb_masks.append(self.dones)
             mb_goals.append(np.copy(self.goals))
             mb_aux.append([True])
-            obs, rewards, dones, infos = self.env.step(actions)
+            inputs = []
+            for env_idx in range(self.nenv):
+                inputs.append({
+                    'action': actions[env_idx],
+                    'done_block': True if not self.aux_dones[env_idx] else False,
+                })
+            obs, _, dones, infos = self.env.step(inputs)
             self.episode_step += 1
+
+            # next obs
+            next_obs = obs.copy()
             for env_idx in range(self.nenv):
                 if dones[env_idx]:
-                    next_obs_i = infos[env_idx].get("next_obs", None)
-                    if next_obs_i is None:
-                        raise ValueError
-                    next_obs = obs.copy()
-                    next_obs[env_idx] = next_obs_i
-                    mb_next_obs.append(next_obs)
+                    o = infos[env_idx].get("next_obs", None)
+                    assert o is not None
+                    next_obs[env_idx] = o
+            mb_next_obs.append(next_obs)
+            # rewards
+            rewards = []
+            for env_idx in range(self.nenv):
+                if np.array_equal(next_obs[env_idx], self.goals[env_idx]):
+                    r = 1.0
                 else:
-                    next_obs = obs
-                    mb_next_obs.append(obs)
+                    r = -0.1 / np.prod(self.maze_shape)
+                rewards.append(r)
 
-                real_done = np.copy(dones[env_idx])
+            for env_idx in range(self.nenv):
+                real_done = dones[env_idx]
                 if not self.aux_dones[env_idx]:
-                    # check whether aux_goal done
-                    if self.episode_step[env_idx] < self.allowed_step[env_idx]:
-                        if np.array_equal(next_obs[env_idx], self.goals[env_idx]):
-                            dones[env_idx] = True
-                            self.controller.update(self.goals[env_idx], next_obs[env_idx],
-                                                   self.episode_step[env_idx]/self.max_episode_length,
-                                                   acer_step / self.total_steps)
-                            self.aux_dones[env_idx] = True
-                            self.aux_step[env_idx] = self.episode_step[env_idx]
-                            rewards[env_idx] = 1.0
-                            aux_goal = one_hot_to_arr(self.aux_goal)
-                            episode_info["aux_info"] = dict(aux_x=aux_goal[0],
-                                                            aux_y=aux_goal[1],
-                                                            succ=True)
-                            self.mem = "aux_succ:True, real_step:{}".format(self.aux_step[env_idx])
-                            self.goals[env_idx] = self.desired_goal[env_idx]
-                            self.aux_entropy = np.mean(entropy)
-                            entropy = []
-                        else:
-                            rewards[:] = -0.1 / np.prod(self.maze_shape)   # avoid meet the desired goal by chance.
-                    else:
-                        pass
-                        # if self.episode_step[env_idx] == self.allowed_step[env_idx]:
-                        #     self.goals[env_idx] = self.desired_goal[env_idx]
-                        #     self.controller.update(self.goals[env_idx], next_obs[env_idx], acer_step / self.total_steps)
-                        #     self.aux_step[env_idx] = self.episode_step[env_idx]
-                        #     self.mem = "aux_succ:False, real_step:{}".format(self.episode_step[env_idx])
-                        #     episode_info["aux_info"] = dict(aux_x=self.aux_goal[0],
-                        #                                     aux_y=self.aux_goal[1],
-                        #                                     succ=False)
-                        #     self.aux_entropy = np.mean(entropy)
-                        #     entropy = []
+                    if np.array_equal(next_obs[env_idx], self.goals[env_idx]):
+                        dones[env_idx] = True
+                        self.controller.update(self.goals[env_idx], next_obs[env_idx],
+                                               self.episode_step[env_idx]/self.max_episode_length,
+                                               acer_step / self.total_steps)
+                        self.aux_dones[env_idx] = True
+                        self.aux_step[env_idx] = self.episode_step[env_idx]
+                        aux_goal = one_hot_to_arr(self.aux_goal)
+                        episode_info["aux_info"] = dict(aux_x=aux_goal[0],
+                                                        aux_y=aux_goal[1],
+                                                        succ=True)
+                        self.mem = "aux_succ:True, real_step:{}".format(self.aux_step[env_idx])
+                        self.goals[env_idx] = self.desired_pos
+                        self.aux_entropy = np.mean(entropy)
+                        entropy = []
                 if real_done:
                     if not self.aux_dones[env_idx]:
                         self.aux_entropy = np.mean(entropy)
@@ -150,14 +143,13 @@ class Runner(AbstractEnvRunner):
                     self.aux_step[env_idx] = 0
                     self.goals[env_idx] = self.controller.step_goal()
                     self.aux_goal = self.goals[env_idx].copy()
-                    # self.allowed_step[env_idx] = t   # t is an upper bound for aux_goal
-
                     self.episode_step[env_idx] = 0
                     self.episode[env_idx] += 1
-                    episode_info["episode"] = infos[env_idx]["episode"]
 
                     episode_info["ent_info"] = dict(aux_ent=self.aux_entropy, tar_ent=self.tar_entropy)
                     logger.info("aux_ent:{:.4f}, tar_ent:{:.4f}".format(self.aux_entropy, self.tar_entropy))
+                    # episode_return is correct because I do not edify reward fn.
+                    episode_info["episode"] = infos[env_idx].get("episode")
 
             # states information for statefull models like LSTM
             self.states = states

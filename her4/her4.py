@@ -3,16 +3,15 @@ import numpy as np
 from baselines import logger
 from baselines.common import set_global_seeds
 from acer.policies import build_policy
-from her3.runner2 import Runner
-from her3.runner3 import EvalRunner
+from her4.runner import Runner
 from common.her_sample import make_sample_her_transitions
-from her3.model import Model
-from her3.util import Acer
+from her4.model import Model
+from her4.util import Acer
 from baselines.common.tf_util import get_session
 import sys
 import os
-from her3.buffer2 import ReplayBuffer
-from her3.defaults import get_store_keys
+from her4.buffer2 import ReplayBuffer
+from her4.defaults import get_store_keys
 
 
 def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
@@ -124,7 +123,6 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
 
     # we still need two runner to avoid one reset others' envs.
     runner = Runner(env=env, model=model, nsteps=nsteps, save_interval=save_interval, total_steps=total_timesteps, her=her)
-    runner_eval = EvalRunner(env=env_eval, model=model)
 
     if replay_ratio > 0:
         assert env.num_envs == env_eval.num_envs

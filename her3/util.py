@@ -110,6 +110,11 @@ class Acer:
                 logger.record_tabular(key, self.episode_stats.get_mean(key))
         logger.dump_tabular()
 
+    def evaluate(self, runner):
+        episode_info = runner.evaluate()
+        self.episode_stats.feed(episode_info["l"], "episode_length")
+        self.episode_stats.feed(episode_info["r"], "episode_return")
+
 
 def f_dist(current_pos, goal_pos):
     dist = abs(float(current_pos["x_pos"]) - float(goal_pos["x_pos"])) + \

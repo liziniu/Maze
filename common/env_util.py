@@ -22,7 +22,7 @@ try:
     from mpi4py import MPI
 except ImportError:
     MPI = None
-
+import gym_maze
 
 _game_envs = defaultdict(set)
 for env in gym.envs.registry.all():
@@ -314,7 +314,10 @@ class MazeWrapper(gym.core.Wrapper):
         gym.core.Wrapper.__init__(self, env)
         self.observation_space = MazeObservationSpace(env.unwrapped.maze_size)
 
-    def step(self, action):
+        self.maze_size = self.env.unwrapped.maze_size
+
+    def step(self, inputs):
+        action, done_blocked = inputs['action'], inputs['done_block']
         if hasattr(self, "_step"):
             self.step = self._step
             obs, reward, done, info = self.step(action)
@@ -323,6 +326,10 @@ class MazeWrapper(gym.core.Wrapper):
         _obs = np.zeros(self.observation_space.shape, dtype=self.observation_space.dtype)
         index = (np.arange(self.observation_space.ndim), obs.astype(int))
         _obs[index] = 1
+        if done_blocked:
+            done = False
+        if info.get("TimeLimit.truncated"):
+            done = True
         return _obs, reward, done, info
 
     def reset(self, **kwargs):
@@ -338,7 +345,7 @@ def make_maze(env_id, max_episode_steps):
     grid = env_id.split("-")[2]
     size = np.prod([int(x) for x in grid.split("x")])
     if size == 100:
-        max_episode_steps = 3000
+        max_episode_steps = 1000
         env = TimeLimit(env, max_episode_steps)
     return MazeWrapper(env)
 

@@ -171,13 +171,8 @@ def parse_cmdline_kwargs(args):
     return {k: parse(v) for k,v in parse_unknown_args(args).items()}
 
 
-def main(args):
+def main(args, extra_args):
     # configure logger, disable logging in child MPI processes (with rank > 0)
-
-    arg_parser = common_arg_parser()
-    args, unknown_args = arg_parser.parse_known_args(args)
-    extra_args = parse_cmdline_kwargs(unknown_args)
-
     import os
     import shutil
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
@@ -226,5 +221,21 @@ def main(args):
     return model
 
 if __name__ == '__main__':
-    main(sys.argv)
-
+    from multiprocessing import Process
+    from copy import deepcopy
+    list_p = []
+    args = sys.argv
+    arg_parser = common_arg_parser()
+    args, unknown_args = arg_parser.parse_known_args(args)
+    extra_args = parse_cmdline_kwargs(unknown_args)
+    for i in range(3):
+        arg_i = deepcopy(args)
+        arg_i.seed = args.seed + i
+        p = Process(target=main, args=(arg_i, extra_args))
+        list_p.append(p)
+    for i, p in enumerate(list_p):
+        p.start()
+        print("Process:{} start".format(i))
+    for i, p in enumerate(list_p):
+        p.join()
+        print("Process:{} end".format(i))

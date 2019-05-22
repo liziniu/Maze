@@ -24,7 +24,6 @@ def safe_mean(x):
         return np.mean(x)
 
 
-
 class MetaController:
     def __init__(self, maze_shape, goal_shape, goal_dtype):
         self.maze_shape = maze_shape
@@ -54,8 +53,29 @@ class MetaController:
                            arr_to_one_hot(np.array([9, 4]), self.ncat),
                            arr_to_one_hot(np.array([7, 8]), self.ncat),
                            arr_to_one_hot(np.array([9, 9]), self.ncat)]
+        # self.possible_g = [arr_to_one_hot(np.array([0, 3]), self.ncat),
+        #                    arr_to_one_hot(np.array([0, 6]), self.ncat),
+        #                    arr_to_one_hot(np.array([3, 6]), self.ncat),
+        #                    arr_to_one_hot(np.array([4, 8]), self.ncat),
+        #                    arr_to_one_hot(np.array([4, 7]), self.ncat),
+        #                    arr_to_one_hot(np.array([5, 3]), self.ncat),
+        #                    arr_to_one_hot(np.array([7, 2]), self.ncat),
+        #                    arr_to_one_hot(np.array([4, 1]), self.ncat),
+        #                    arr_to_one_hot(np.array([6, 0]), self.ncat),
+        #                    arr_to_one_hot(np.array([8, 0]), self.ncat),
+        #                    arr_to_one_hot(np.array([8, 2]), self.ncat),
+        #                    arr_to_one_hot(np.array([8, 4]), self.ncat),
+        #                    arr_to_one_hot(np.array([6, 5]), self.ncat),
+        #                    arr_to_one_hot(np.array([6, 8]), self.ncat),
+        #                    arr_to_one_hot(np.array([7, 6]), self.ncat),
+        #                    arr_to_one_hot(np.array([9, 7]), self.ncat),
+        #                    arr_to_one_hot(np.array([9, 9]), self.ncat)
+        #                    ]
         self.pointer = 0
         self.achieved_cnt = deque(maxlen=10)
+
+        self.current_goal = self.possible_g[self.pointer]
+        self.next_goal = self.possible_g[self.pointer + 1]
 
     def step_goal(self):
         if self.version == 1:
@@ -74,11 +94,11 @@ class MetaController:
         goal = np.array(goal)
         goal = arr_to_one_hot(goal, ncat=self.ncat)
 
-        if safe_mean(self.achieved_cnt) > 0.7:
+        if safe_mean(self.achieved_cnt) >= 0.7 and len(self.achieved_cnt) == 10:
             self.pointer += 1
             self.pointer = min(self.pointer, len(self.possible_g)-1)
             self.achieved_cnt = deque(maxlen=10)
-        goal = self.possible_g[self.pointer]
+        self.current_goal = goal = self.possible_g[self.pointer]
         return goal
 
     def update(self, goal, final, t, alpha, beta=1.0):
@@ -104,6 +124,3 @@ class MetaController:
         index = (np.arange(self.n), index)
         goal[index] = 1
         return goal
-
-    def sample_step(self):
-        return np.random.randint(np.max(self.maze_shape), np.prod(self.maze_shape))

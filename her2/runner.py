@@ -52,7 +52,12 @@ class Runner(AbstractEnvRunner):
             mb_mus.append(mus)
             mb_dones.append(self.dones)
             mb_goals.append(np.copy(self.goals))
-            obs, rewards, dones, infos = self.env.step(actions)
+
+            # this for maze env because we edify step fn.
+            inputs = []
+            for i in range(self.nenv):
+                inputs.append((actions[i], self.goals[i]))
+            obs, rewards, dones, infos = self.env.step(inputs)
             self.episode_step += 1
             for env_idx in range(self.nenv):
                 if dones[env_idx]:
