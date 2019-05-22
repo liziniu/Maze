@@ -2,6 +2,7 @@ import threading
 import numpy as np
 import sys
 from her2.util import vf_dist
+from baselines import logger
 
 
 def check_reward_fn(next_obs, dones, maze_size):
@@ -77,7 +78,18 @@ class ReplayBuffer:
                     rewards = rewards.flatten()
                     error = np.sum(np.abs(cache[i]["rewards"] - rewards))
                     assert error < 1e-6, "error:{}".format(error)
-                    cache[i]["goal_obs"][her_index] = cache[i]["next_obs"][future_index]
+                    nb = len(her_index)
+                    revise = False
+                    cnt = 0
+                    if revise:
+                        for idx in range(nb):
+                            if np.any(cache[i]["next_obs"][future_index[idx]] < cache[i]["obs"][her_index[idx]]):
+                                cnt += 1
+                            else:
+                                cache[i]["goal_obs"][her_index[idx]] = cache[i]["next_obs"][future_index[idx]]
+                        logger.info("drop:{:.4f}".format(cnt/nb))
+                    else:
+                        cache[i]["goal_obs"][her_index] = cache[i]["next_obs"][future_index]
             self._cache = cache.copy()
         else:
             cache = self._cache.copy()

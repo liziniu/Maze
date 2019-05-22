@@ -17,7 +17,7 @@ class Acer:
         self.buffer = buffer
         self.log_interval = log_interval
         self.tstart = None
-        self.keys = ["episode_return", "episode_length",  "rewards", "aux_x", "aux_y", "aux_succ_ratio"]
+        self.keys = ["episode_return", "episode_length",  "rewards", "aux_x", "aux_y", "aux_succ_ratio", "her_gain"]
         self.keys += ["tar_ent", "aux_ent"]
         self.episode_stats = EpisodeStats(maxlen=10, keys=self.keys)
         self.steps = 0
@@ -49,6 +49,7 @@ class Acer:
                 names_ops, values_ops = model.train_policy(
                     obs, next_obs, actions, rewards, dones, mus, model.initial_state, masks, steps, goal_obs, aux)
                 self.episode_stats.feed(np.mean(rewards), "rewards")
+                self.episode_stats.feed(results["her_gain"], "her_gain")
 
         if int(steps/runner.nbatch) % self.log_interval == 0:
             names_ops, values_ops = names_ops + ["memory_usage(GB)"], values_ops + [self.buffer.memory_usage]
