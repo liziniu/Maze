@@ -61,8 +61,6 @@ class Runner(AbstractEnvRunner):
         self.aux_entropy = 0.
         self.tar_entropy = 0.
 
-        self.greedy_explore = True
-
     def run(self, acer_step=None, debug=False):
         # enc_obs = np.split(self.obs, self.nstack, axis=3)  # so now list of obs steps
         mb_obs, mb_next_obs, mb_actions, mb_mus, mb_dones, mb_masks, mb_rewards, mb_goals = [], [], [], [], [], [], [], []
@@ -79,9 +77,6 @@ class Runner(AbstractEnvRunner):
             mb_mus.append(mus)
             mb_masks.append(self.dones)
             mb_goals.append(np.copy(self.goals))
-            # if not self.her:
-            #     mb_aux.append(np.copy(self.aux_dones))
-            # else:
             mb_aux.append([True])
             obs, rewards, dones, infos = self.env.step(actions)
             self.episode_step += 1
