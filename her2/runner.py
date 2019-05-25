@@ -56,7 +56,10 @@ class Runner(AbstractEnvRunner):
             # this for maze env because we edify step fn.
             inputs = []
             for i in range(self.nenv):
-                inputs.append((actions[i], self.goals[i]))
+                inputs.append({
+                    'action': actions[i],
+                    'done_block': False,
+                })
             obs, rewards, dones, infos = self.env.step(inputs)
             self.episode_step += 1
             for env_idx in range(self.nenv):

@@ -15,9 +15,9 @@ from her2.buffer2 import ReplayBuffer
 from her2.defaults import get_store_keys
 
 
-def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01,
+def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=0.5, ent_coef=0.01, debug=False,
           max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,
-          log_interval=100, buffer_size=50000, replay_ratio=4, replay_start=10000, c=10.0, trust_region=True,
+          log_interval=100, buffer_size=50000, replay_ratio=4, replay_start=5000, c=10.0, trust_region=True,
           alpha=0.99, delta=1, replay_k=1, env_eval=None, eval_interval=300, save_model=False, revise_done=True,
           goal_shape=None, nb_train_epoch=4, her=True, buffer2=True, save_interval=0, load_path=None, **network_kwargs):
 
@@ -152,10 +152,15 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
 
     # === init to make sure we can get goal ===
     onpolicy_cnt = 0
-    debug = False
     if debug:
-        while True:
-            runner.run(debug=True)
+        cnt = 0
+        while cnt < 20:
+            results = runner.run(debug=True)
+            if results.get("episode_info"):
+                cnt += 1
+                acer.log([], [])
+            acer.record_episode_info(results["episode_info"])
+        assert 0
 
     while acer.steps < total_timesteps:
         acer.call(replay_start=replay_start, nb_train_epoch=nb_train_epoch)
