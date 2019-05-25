@@ -176,7 +176,7 @@ def main(args, extra_args):
     import os
     import shutil
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
-    path = osp.join("logs", datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S-%f".format(args.env)))
+    path = osp.join("logs",  datetime.datetime.now().strftime("{}-{}-%Y-%m-%d-%H-%M-%S-%f".format(args.alg, args.env)))
     if MPI is None or MPI.COMM_WORLD.Get_rank() == 0:
         rank = 0
         logger.configure(dir=path)
@@ -228,7 +228,7 @@ if __name__ == '__main__':
     arg_parser = common_arg_parser()
     args, unknown_args = arg_parser.parse_known_args(args)
     extra_args = parse_cmdline_kwargs(unknown_args)
-    for i in range(3):
+    for i in range(args.num_exp):
         arg_i = deepcopy(args)
         arg_i.seed = args.seed + i
         p = Process(target=main, args=(arg_i, extra_args))
