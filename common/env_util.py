@@ -23,6 +23,8 @@ try:
 except ImportError:
     MPI = None
 import gym_maze
+from common import maze
+
 
 _game_envs = defaultdict(set)
 for env in gym.envs.registry.all():
@@ -281,6 +283,7 @@ class MazeObservationSpace(gym.Space):
     self.observation_space = OneHotEncoding(size=4)
     """
     def __init__(self, size=None):
+        # size = (20, 20)         # todo
         assert len(size) == 2 and size[0] == size[1]
         self.size = size[0]
         gym.Space.__init__(self, (), np.int64)

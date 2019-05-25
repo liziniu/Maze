@@ -1,0 +1,128 @@
+[
+    {
+        "index": [
+            15,
+            15
+        ],
+        "direction": "S"
+    },
+    {
+        "index": [
+            15,
+            16
+        ],
+        "direction": "N"
+    },
+    {
+        "index": [
+            17,
+            15
+        ],
+        "direction": "S"
+    },
+    {
+        "index": [
+            17,
+            16
+        ],
+        "direction": "N"
+    },
+    {
+        "index": [
+            19,
+            15
+        ],
+        "direction": "S"
+    },
+    {
+        "index": [
+            19,
+            16
+        ],
+        "direction": "N"
+    },
+    {
+        "index": [
+            15,
+            17
+        ],
+        "direction": "E"
+    },
+    {
+        "index": [
+            16,
+            17
+        ],
+        "direction": "W"
+    },
+    {
+        "index": [
+            16,
+            17
+        ],
+        "direction": "E"
+    },
+    {
+        "index": [
+            17,
+            17
+        ],
+        "direction": "W"
+    },
+    {
+        "index": [
+            17,
+            17
+        ],
+        "direction": "E"
+    },
+    {
+        "index": [
+            18,
+            17
+        ],
+        "direction": "W"
+    },
+    {
+        "index": [
+            18,
+            17
+        ],
+        "direction": "E"
+    },
+    {
+        "index": [
+            19,
+            17
+        ],
+        "direction": "W"
+    },
+    {
+        "index": [
+            16,
+            18
+        ],
+        "direction": "S"
+    },
+    {
+        "index": [
+            16,
+            19
+        ],
+        "direction": "N"
+    },
+    {
+        "index": [
+            18,
+            18
+        ],
+        "direction": "S"
+    },
+    {
+        "index": [
+            19,
+            18
+        ],
+        "direction": "N"
+    }
+]
