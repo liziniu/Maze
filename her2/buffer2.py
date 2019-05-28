@@ -3,6 +3,7 @@ import numpy as np
 import sys
 from her2.util import vf_dist
 from baselines import logger
+from her3.meta_controller import one_hot_to_arr, arr_to_one_hot
 
 
 def check_reward_fn(next_obs, dones, maze_size):
@@ -44,7 +45,8 @@ class ReplayBuffer:
         self.her_gain = 0.
         self.revise_done = revise_done
         self.maze_size = np.prod([int(x) for x in env.spec.id.split("-")[2].split("x")])
-
+        self.true_goal = np.array([int(x) for x in env.spec.id.split("-")[2].split("x")]) -1
+        self.true_goal = arr_to_one_hot(self.true_goal, self.true_goal[0]+1)
         # memory management
         self.lock = threading.Lock()
         self.current_size = 0   # num of sub-trajectories rather than transitions
@@ -74,23 +76,14 @@ class ReplayBuffer:
             if self.her:
                 for i in range(self.nenv):
                     dones = cache[i]["dones"]
-                    her_index, future_index = self.sample_goal_fn(dones)
-                    rewards = self.reward_fn(cache[i]["next_obs"][None, :], cache[i]["goal_obs"][None, :], self.maze_size)
-                    rewards = rewards.flatten()
-                    error = np.sum(np.abs(cache[i]["rewards"] - rewards))
+                    deaths = cache[i]["deaths"]
+                    her_index, future_index = self.sample_goal_fn(dones, deaths)
+                    reach_rewards = self.reward_fn(cache[i]["next_obs"][None, :], cache[i]["goal_obs"][None, :], self.maze_size)
+                    reach_rewards = reach_rewards.flatten()
+                    reach_index = np.where(reach_rewards.astype(int))
+                    error = np.sum(np.abs(cache[i]["rewards"][reach_index] - reach_rewards[reach_index]))
                     assert error < 1e-6, "error:{}".format(error)
-                    nb = len(her_index)
-                    revise = False
-                    cnt = 0
-                    if revise:
-                        for idx in range(nb):
-                            if np.any(cache[i]["next_obs"][future_index[idx]] < cache[i]["obs"][her_index[idx]]):
-                                cnt += 1
-                            else:
-                                cache[i]["goal_obs"][her_index[idx]] = cache[i]["next_obs"][future_index[idx]]
-                        logger.info("drop:{:.4f}".format(cnt/nb))
-                    else:
-                        cache[i]["goal_obs"][her_index] = cache[i]["next_obs"][future_index]
+                    cache[i]["goal_obs"][her_index] = cache[i]["next_obs"][future_index]
             self._cache = cache.copy()
         else:
             cache = self._cache.copy()
@@ -109,13 +102,27 @@ class ReplayBuffer:
         for key in self.keys:
             samples[key] = np.asarray(samples[key])
         if self.her:
-            rewards = np.mean(samples["rewards"])
-            new_rewards = self.reward_fn(samples["next_obs"], samples["goal_obs"], self.maze_size)
+            rewards = samples["rewards"]
+            reach_rewards = self.reward_fn(samples["next_obs"], samples["goal_obs"], self.maze_size)
+
+            reach_index = np.where(reach_rewards.astype(int))
+            new_rewards = np.copy(rewards)
+            new_rewards[reach_index] = 1.0
+
+            dead_index = np.where(samples["deaths"])
+            for k in range(len(dead_index[0])):
+                env_index = dead_index[0][k]
+                step = dead_index[1][k]
+                assert np.array_equal(samples["goal_obs"][env_index][step], self.true_goal) or \
+                       np.array_equal(samples["goal_obs"][env_index][step], samples["next_obs"][env_index][step])
+
             if self.revise_done:
-                new_done_index = np.where(new_rewards.astype(int))
-                samples["dones"][new_done_index] = True
-            samples["her_gain"] = new_rewards - rewards
+                samples["dones"][reach_index] = True
+
+            samples["her_gain"] = np.mean(new_rewards) - np.mean(rewards)
             samples["rewards"] = new_rewards
+            if samples["her_gain"] < 0:
+                raise ValueError("her gain:{} should be large than 0.".format(samples["her_gain"]))
         return samples
 
     def put(self, episode_batch):

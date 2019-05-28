@@ -14,4 +14,4 @@ def atari():
 
 def get_store_keys():
     return ["obs", "next_obs", "actions", "rewards", "mus", "dones",
-            "masks", "goal_obs"]
+            "masks", "goal_obs", "deaths"]

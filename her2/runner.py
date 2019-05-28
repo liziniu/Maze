@@ -6,7 +6,7 @@ from baselines import logger
 from common.util import DataRecorder
 import os
 from copy import deepcopy
-from her3.meta_controller import arr_to_one_hot
+from her3.meta_controller import arr_to_one_hot, one_hot_to_arr
 
 
 class Runner(AbstractEnvRunner):
@@ -39,10 +39,18 @@ class Runner(AbstractEnvRunner):
         self.episode_step = np.zeros(self.nenv, dtype=np.int32)
         self.episode = np.zeros(self.nenv, dtype=np.int32)
 
+        self.dead_state = [np.array([5., 5.]),
+                           np.array([8., 10.]),
+                           np.array([16., 16.])
+                           ]
+        # self.dead_state = []
+        self.dead_reward = -0.1
+
     def run(self, debug=False):
         # enc_obs = np.split(self.obs, self.nstack, axis=3)  # so now list of obs steps
         mb_obs, mb_next_obs, mb_actions, mb_mus, mb_dones, mb_rewards, mb_goals = [], [], [], [], [], [], [],
         episode_info = {}
+        mb_deaths = []
         for _ in range(self.nsteps):
             actions, mus, states = self.model.step(self.obs, S=self.states, M=self.dones, goals=self.goals)
             if debug:
@@ -62,19 +70,42 @@ class Runner(AbstractEnvRunner):
                 })
             obs, rewards, dones, infos = self.env.step(inputs)
             self.episode_step += 1
+            next_obs = obs.copy()
+            for env_idx in range(self.nenv):
+                if dones[env_idx]:
+                    o = infos[env_idx].get("next_obs")
+                    assert o is not None
+                    next_obs[env_idx] = o
+            mb_next_obs.append(next_obs)
+            
+            death = np.array([False for _ in range(self.nenv)])
             for env_idx in range(self.nenv):
                 if dones[env_idx]:
                     self.episode_step[env_idx] = 0
                     self.episode[env_idx] += 1
                     episode_info["episode"] = infos[env_idx]["episode"]
                     assert np.array_equal(obs[env_idx], arr_to_one_hot(np.array([0., 0.]), self.ncat)), "next_obs:{}".format(obs[env_idx])
-                    next_obs_i = infos[env_idx].get("next_obs", None)
-                    assert next_obs_i is not None
-                    next_obs = obs.copy()
-                    next_obs[env_idx] = next_obs_i
-                    mb_next_obs.append(next_obs)
                 else:
-                    mb_next_obs.append(obs)
+                    dead = False
+                    for dead_state in self.dead_state:
+                        if np.array_equal(one_hot_to_arr(obs[env_idx]), dead_state):
+                            dead = True
+                            break
+                    if dead:
+                        dones[env_idx] = True
+                        if self.dead_reward == -1:
+                            dead_reward = -0.1
+                        elif self.dead_reward == -0.1:
+                            dead_reward = rewards[env_idx]
+                        else:
+                            raise ValueError
+                        episode_info["episode"] = {"l": self.episode_step[env_idx],
+                                                   "r": -0.1/np.prod(self.size)*self.episode_step[env_idx] + dead_reward}
+                        obs[env_idx] = self.env.reset_v2(env_idx)[0]
+                        self.episode_step[env_idx] = 0
+                        self.episode[env_idx] += 1
+                        rewards[env_idx] = dead_reward
+                        death[env_idx] = True
                 if rewards[env_idx] == 1.0:
                     assert np.array_equal(obs[env_idx], arr_to_one_hot(np.array([0., 0.]), self.ncat))
             # states information for statefull models like LSTM
@@ -82,6 +113,7 @@ class Runner(AbstractEnvRunner):
             self.dones = dones
             self.obs = obs
             mb_rewards.append(rewards)
+            mb_deaths.append(death)
         mb_obs.append(np.copy(self.obs))
         mb_dones.append(np.copy(self.dones))
 
@@ -92,6 +124,7 @@ class Runner(AbstractEnvRunner):
         mb_mus = np.asarray(mb_mus, dtype=np.float32).swapaxes(1, 0)
         mb_goals = np.asarray(mb_goals, dtype=self.goals.dtype).swapaxes(1, 0)
         mb_dones = np.asarray(mb_dones, dtype=np.bool).swapaxes(1, 0)
+        mb_deaths = np.asarray(mb_deaths, dtype=np.bool).swapaxes(1, 0)
 
         mb_masks = mb_dones # Used for statefull models like LSTM's to mask state when done
         mb_dones = mb_dones[:, 1:] # Used for calculating returns. The dones array is now aligned with rewards
@@ -108,6 +141,7 @@ class Runner(AbstractEnvRunner):
             dones=mb_dones,
             masks=mb_masks,
             goal_obs=mb_goals,
+            deaths=mb_deaths,
             episode_info=episode_info,
         )
         return results

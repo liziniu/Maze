@@ -5,7 +5,7 @@ from baselines.common import set_global_seeds
 from acer.policies import build_policy
 from her2.buffer import Buffer
 from her2.runner import Runner
-from common.her_sample import make_sample_her_transitions
+from her2.her_sample import make_sample_her_transitions
 from her2.model import Model
 from her2.util import Acer
 from baselines.common.tf_util import get_session
@@ -19,7 +19,8 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
           max_grad_norm=10, lr=7e-4, lrschedule='linear', rprop_epsilon=1e-5, rprop_alpha=0.99, gamma=0.99,
           log_interval=100, buffer_size=50000, replay_ratio=4, replay_start=5000, c=10.0, trust_region=True,
           alpha=0.99, delta=1, replay_k=1, env_eval=None, eval_interval=300, save_model=False, revise_done=True,
-          goal_shape=None, nb_train_epoch=4, her=True, buffer2=True, save_interval=0, load_path=None, **network_kwargs):
+          goal_shape=None, nb_train_epoch=4, her=True, buffer2=True, save_interval=0, load_path=None,
+          reduced_step=5, **network_kwargs):
 
     '''
     Main entrypoint for ACER (Actor-Critic with Experience Replay) algorithm (https://arxiv.org/pdf/1611.01224.pdf)
@@ -128,10 +129,10 @@ def learn(network, env, seed=None, nsteps=20, total_timesteps=int(80e6), q_coef=
 
     if replay_ratio > 0:
         if her:
-            sample_goal_fn = make_sample_her_transitions("future", replay_k)
+            sample_goal_fn = make_sample_her_transitions("future", replay_k, reduced_step)
         else:
             def dummpy_sample():
-                def sample(dones, **kwargs):
+                def sample(dones, *args, **kwargs):
                     dummy = np.copy(dones)
                     dummy.fill(False)
                     index = np.where(dummy)
